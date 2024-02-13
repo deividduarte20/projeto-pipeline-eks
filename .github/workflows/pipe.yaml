@@ -53,12 +53,20 @@ jobs:
         terraform init
         terraform apply -auto-approve
 
+    - name: Install metrics Server
+      run: |
+        kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
     - name: Deploy to EKS
       run: |
         kubectl create namespace app
         kubectl apply -f manifests/deployment.yaml
         kubectl apply -f manifests/service.yaml
         kubectl apply -f manifests/hpa.yaml
+    
+    - name: Install nginx ingress controller
+      run: |
+        kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 
     - name: Install Helm
       run: |

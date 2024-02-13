@@ -28,9 +28,9 @@ resource "null_resource" "eks_cluster_config" {
   }
 }
 
-resource "null_resource" "executa_script" {
-  depends_on = [null_resource.eks_cluster_config]
-  provisioner "local-exec" {
-    command = "scripts/script.sh"
-  }
-}
+# resource "null_resource" "executa_script" {
+#   depends_on = [null_resource.eks_cluster_config]
+#   provisioner "local-exec" {
+#     command = "scripts/script.sh"
+#   }
+# }
