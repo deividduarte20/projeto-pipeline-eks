@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: api-new-comments
-        image: deividdua32/api-comments:v1
+        image: 825223353827.dkr.ecr.us-east-1.amazonaws.com/new-comments:v1
         ports:
         - containerPort: 8000
         resources:
