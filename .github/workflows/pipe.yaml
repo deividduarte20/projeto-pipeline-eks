@@ -83,3 +83,4 @@ jobs:
     - name: Deploy Helm Chart
       run: |
         helm install prometheus prometheus-community/prometheus-stack --namespace monitoramento --create-namespace
+        
