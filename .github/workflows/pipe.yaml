@@ -29,9 +29,6 @@ jobs:
       run: |
         cd application
         docker build -t 825223353827.dkr.ecr.us-east-1.amazonaws.com/new-comments:v1 .
-    
-    - name: Push Image
-      run: |
         docker push 825223353827.dkr.ecr.us-east-1.amazonaws.com/new-comments:v1
 
   deploy:
