@@ -11,7 +11,7 @@ jobs:
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4.1.1
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4.0.2
@@ -38,7 +38,7 @@ jobs:
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4.1.1
 
     - name: Set up AWS CLI
       uses: aws-actions/configure-aws-credentials@v4.0.2
@@ -75,12 +75,9 @@ jobs:
         chmod +x get_helm.sh
         ./get_helm.sh
 
-    - name: Add Helm Repository
+    - name: Add and Update Helm Repository
       run: |
         helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-
-    - name: Update Helm Repository
-      run: |
         helm repo update
 
     - name: Deploy Helm Chart
