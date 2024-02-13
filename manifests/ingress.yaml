@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ing-new-comments
+  namespace: app
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+  - host: app.devops.com # Altere para seu domínio
+    http:
+      paths:
+        - pathType: "Prefix"
+          path: "/"
+          backend:
+            service:
+              name: svc-new-comments
+              port:
+                number: 80

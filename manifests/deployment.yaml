@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-new-comments
+  namespace: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-new-comments
+  template:
+    metadata:
+      labels:
+        app: api-new-comments
+      annotations:
+          prometheus.io/scrape: "true"
+          prometheus.io/port: "5000"  # ajuste conforme a porta do seu aplicativo
+          prometheus.io/path: "/metrics"  # ajuste conforme o caminho do endpoint de métricas do seu aplicativo
+    spec:
+      containers:
+      - name: api-new-comments
+        image: deividdua32/api-comments:v1
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
