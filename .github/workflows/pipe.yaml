@@ -21,6 +21,7 @@ jobs:
 
     - name: Build Docker Image
       run: |
+        cd application
         docker build -t deividdua32/api-new-comments:v1 .
         docker push deividdua32/api-new-comments:v1
 
