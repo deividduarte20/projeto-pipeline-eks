@@ -59,7 +59,6 @@ jobs:
         kubectl apply -f manifests/deployment.yaml
         kubectl apply -f manifests/service.yaml
         kubectl apply -f manifests/hpa.yaml
-        kubectl apply -f manifests/ingress.yaml
 
     - name: Install Helm
       run: |
