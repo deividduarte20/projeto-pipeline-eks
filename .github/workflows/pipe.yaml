@@ -57,9 +57,9 @@ jobs:
       run: |
         aws eks --region us-east-1 update-kubeconfig --name duarte
 
-    # - name: Install metrics Server
-    #   run: |
-    #     kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml --validate=false
+    - name: Install metrics Server
+      run: |
+        kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml --validate=false
 
     - name: Deploy to EKS
       run: |
