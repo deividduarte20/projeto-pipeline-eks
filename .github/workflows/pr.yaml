@@ -16,7 +16,7 @@ jobs:
     #     ls -la $GITHUB_WORKSPACE
 
     - name: Entrar no Diretório terraform-eks
-      run: terraform-eks/
+      run: cd terraform-eks/
 
     - name: Inicializar Terraform
       run: terraform init
