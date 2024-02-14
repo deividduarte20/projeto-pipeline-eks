@@ -11,12 +11,12 @@ jobs:
     - name: Checkout do Código
       uses: actions/checkout@v4.1.1
     
-    - name: Listar Diretórios e Arquivos
-      run: |
-        ls -la $GITHUB_WORKSPACE
+    # - name: Listar Diretórios e Arquivos
+    #   run: |
+    #     ls -la $GITHUB_WORKSPACE
 
     - name: Entrar no Diretório terraform-eks
-      run: cd /terraform-eks
+      run: terraform-eks/
 
     - name: Inicializar Terraform
       run: terraform init
