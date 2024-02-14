@@ -1,41 +1,49 @@
-name: 'Terrafor Destroy'
+name: Destroy terraform resources on the given folder
 
-on: workflow_dispatch
-  
+on:
+  workflow_dispatch:
+    inputs:
+      dir:
+        description: 'Directory with resources to be destroyed'
+        required: true
+        default: 'terraform'
+
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
 jobs:
-  terraform:
-    name: 'Terraform'
+  destroy:
+    name: 'terraform destroy'
     runs-on: ubuntu-latest
-    environment: production
+    env:
+      TF_WORKING_DIR: ${{ github.event.inputs.dir }}
 
-    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
     defaults:
       run:
         shell: bash
+        working-directory: ${{ env.TF_WORKING_DIR }}
 
     steps:
-    # Checkout the repository to the GitHub Actions runner
-    - name: Checkout
-      uses: actions/checkout@v4.1.1
-        
-    
-    # Checkout the repository to the GitHub Actions runner
-    - name: Setup Terraform CLI
-      uses: hashicorp/setup-terraform@v2.0.2
+      - name: Checkout
+        uses: actions/checkout@v2
 
-    # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
-    - name: Change directory
-      run: cd terraform-eks
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.2.4
 
-    - name: Configure Terraform Backend
-      run: |
-        terraform init -backend-config="access_key=${AWS_ACCESS_KEY_ID}" -backend-config="secret_key=${AWS_SECRET_ACCESS_KEY}"
+      - name: Terraform fmt
+        id: fmt
+        run: terraform fmt -check
 
-      # On push to "main", build or change infrastructure according to Terraform configuration files
-      # Note: It is recommended to set up a required "strict" status check in your repository for "Terraform Cloud". See the documentation on "strict" required status checks for more information: https://help.github.com/en/github/administering-a-repository/types-of-required-status-checks
-    - name: Terraform destroy
-      run: terraform destroy -auto-approve
+      - name: Terraform Init
+        id: init
+        run: terraform init 
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
