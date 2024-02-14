@@ -31,10 +31,6 @@ jobs:
     # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
     - name: Change directory
       run: cd terraform-eks
-
-    - name: Configure Terraform Backend
-      run: |
-        terraform init -backend-config="access_key=${AWS_ACCESS_KEY_ID}" -backend-config="secret_key=${AWS_SECRET_ACCESS_KEY}"
     - uses: actions/checkout@v4.1.1
 
     - name: Initialize Terraform
