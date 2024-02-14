@@ -23,7 +23,7 @@ jobs:
         aws-region: us-east-1
 
     - name: Initialize Terraform
-      run: terraform init
+      run: cd terraform-esk && terraform init
 
     - name: Format Terraform code
       run: terraform fmt
