@@ -21,7 +21,4 @@ jobs:
       run: terraform fmt -recursive
 
     - name: Executar Terraform Plan
-      run: terraform plan -out=tfplan
-
-    - name: Mostrar Saída do Terraform Plan
-      run: cat tfplan
+      run: terraform plan
