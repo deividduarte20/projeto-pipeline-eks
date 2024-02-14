@@ -13,12 +13,8 @@ jobs:
     
     - name: Listar Diretórios e Arquivos
       run: |
-        ls -la
-        cd ..
-        ls -la
-        cd projeto-pipeline-eks
-        ls -la
-        cd terraform-eks
+        ls -la $GITHUB_WORKSPACE
+        cd $GITHUB_WORKSPACE/projeto-pipeline-eks/terraform-eks
         ls -la
 
     - name: Entrar no Diretório terraform-eks
