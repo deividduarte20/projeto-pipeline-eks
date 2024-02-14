@@ -9,10 +9,10 @@ jobs:
 
     steps:
     - name: Checkout do Código
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4.1.1
 
     - name: Entrar no Diretório terraform-eks
-      run: cd terraform-eks
+      run: cd ../../terraform-eks 
 
     - name: Inicializar Terraform
       run: terraform init
