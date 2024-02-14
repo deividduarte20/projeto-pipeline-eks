@@ -22,11 +22,6 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
-    - name: Run Terraform
-      run: |
-        cd terraform-eks
-        terraform init
-
     - name: Initialize Terraform
       run: terraform init
 
