@@ -11,8 +11,12 @@ jobs:
     - name: Checkout do Código
       uses: actions/checkout@v4.1.1
     
-    - name: Listar Diretórios
-      run: ls -la
+    - name: Listar Diretórios e Arquivos
+      run: |
+        ls -la
+        cd projeto-pipeline-eks
+        ls -la
+        cd terraform
 
     - name: Entrar no Diretório terraform-eks
       run: cd projeto-pipeline-eks/terraform-eks
