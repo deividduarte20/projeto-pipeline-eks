@@ -1,0 +1,41 @@
+name: Terraform fmt
+
+on:
+  pull_request:
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.1
+      - name: Setup Terraform
+        uses: terraform-actions/tool-cache@v2
+        with:
+          version: 1.3.4 # Substitua pela versão desejada
+      - name: Check Terraform fmt
+        run: |
+          echo "Checking Terraform fmt.."
+          TERRAFORM_FMT_RESULT=$(terraform fmt -recursive)
+
+          if [[ -z $TERRAFORM_FMT_RESULT ]]; then
+            echo "[OK]"
+          else
+            echo "Terraform fmt applied changes to file(s):"
+            echo "$TERRAFORM_FMT_RESULT"
+            echo "Check and commit again."
+            exit 1
+          fi
+
+      - name: Comment PR
+        uses: actions/github-script@v5
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const output = fs.readFileSync('plan_output.txt', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: Output of terraform plan:\n\n\\\\n${output}\n\\\``
+            });
