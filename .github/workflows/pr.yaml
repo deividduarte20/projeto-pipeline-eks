@@ -6,17 +6,17 @@ on:
 jobs:
   terraform-eks:
     runs-on: ubuntu-latest
+    env:
+      TF_WORKING_DIR: 'terraform-eks/'
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ env.TF_WORKING_DIR }}
 
     steps:
     - name: Checkout do Código
       uses: actions/checkout@v4.1.1
-    
-    # - name: Listar Diretórios e Arquivos
-    #   run: |
-    #     ls -la $GITHUB_WORKSPACE
-
-    - name: Entrar no Diretório terraform-eks
-      run: cd terraform-eks/ ; ls -lha
 
     - name: Inicializar Terraform
       run: terraform init
