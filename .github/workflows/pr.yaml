@@ -12,7 +12,7 @@ jobs:
       uses: actions/checkout@v4.1.1
 
     - name: Entrar no Diretório terraform-eks
-      run: cd ../../terraform-eks 
+      run: ls
 
     - name: Inicializar Terraform
       run: terraform init
