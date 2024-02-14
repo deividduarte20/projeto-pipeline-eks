@@ -30,6 +30,7 @@ jobs:
 
     - name: Check Terraform fmt
       run: |
+          cd terraform-eks
           echo "Checking Terraform fmt.."
           TERRAFORM_FMT_RESULT=$(terraform fmt -recursive)
 
