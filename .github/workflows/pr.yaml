@@ -1,38 +1,27 @@
-name: Terraform fmt
+name: Terraform EKS Pipeline
 
 on:
   pull_request:
 
 jobs:
-  terraform:
-    name: 'Terraform'
+  terraform-eks:
     runs-on: ubuntu-latest
 
-    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
-    defaults:
-      run:
-        shell: bash
-
     steps:
-    # Checkout the repository to the GitHub Actions runner
-    - name: Set up AWS CLI
-      uses: aws-actions/configure-aws-credentials@v4.0.2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
+    - name: Checkout do Código
+      uses: actions/checkout@v2
 
-    - name: Initialize Terraform
-      run: ls ; cd terraform-eks ; ls ; terraform init
+    - name: Entrar no Diretório terraform-eks
+      run: cd terraform-eks
 
-    - name: Format Terraform code
-      run: terraform fmt
+    - name: Inicializar Terraform
+      run: terraform init
 
-    - name: Generate Terraform plan
-      run: terraform plan
+    - name: Formatar arquivos Terraform
+      run: terraform fmt -recursive
 
-    - name: Display Terraform plan
-      run: |
-        echo "**Terraform Plan:**"
-        echo "---------------------"
-        terraform show -no-color plan
+    - name: Executar Terraform Plan
+      run: terraform plan -out=tfplan
+
+    - name: Mostrar Saída do Terraform Plan
+      run: cat tfplan
