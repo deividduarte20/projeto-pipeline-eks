@@ -3,15 +3,10 @@ name: Terraform fmt
 on:
   pull_request:
 
-env:
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
 jobs:
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
-    environment: production
 
     # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
     defaults:
@@ -20,18 +15,17 @@ jobs:
 
     steps:
     # Checkout the repository to the GitHub Actions runner
-    - name: Checkout
-      uses: actions/checkout@v4.1.1
-        
-    
-    # Checkout the repository to the GitHub Actions runner
-    - name: Setup Terraform CLI
-      uses: hashicorp/setup-terraform@v2.0.2
+    - name: Set up AWS CLI
+      uses: aws-actions/configure-aws-credentials@v4.0.2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
 
-    # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
-    - name: Change directory
-      run: cd terraform-eks
-    - uses: actions/checkout@v4.1.1
+    - name: Run Terraform
+      run: |
+        cd terraform-eks
+        terraform init
 
     - name: Initialize Terraform
       run: terraform init
