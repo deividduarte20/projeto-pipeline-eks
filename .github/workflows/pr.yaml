@@ -28,31 +28,26 @@ jobs:
     - name: Setup Terraform CLI
       uses: hashicorp/setup-terraform@v2.0.2
 
-    - name: Check Terraform fmt
+    # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+    - name: Change directory
+      run: cd terraform-eks
+
+    - name: Configure Terraform Backend
       run: |
-          cd terraform-eks
-          echo "Checking Terraform fmt.."
-          TERRAFORM_FMT_RESULT=$(terraform fmt -recursive)
+        terraform init -backend-config="access_key=${AWS_ACCESS_KEY_ID}" -backend-config="secret_key=${AWS_SECRET_ACCESS_KEY}"
+    - uses: actions/checkout@v4.1.1
 
-          if [[ -z $TERRAFORM_FMT_RESULT ]]; then
-            echo "[OK]"
-          else
-            echo "Terraform fmt applied changes to file(s):"
-            echo "$TERRAFORM_FMT_RESULT"
-            echo "Check and commit again."
-            exit 1
-          fi
+    - name: Initialize Terraform
+      run: terraform init
 
-    - name: Comment PR
-      uses: actions/github-script@v5
-      if: github.event_name == 'pull_request'
-      with:
-        script: |
-          const fs = require('fs');
-          const output = fs.readFileSync('plan_output.txt', 'utf8');
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: Output of terraform plan:\n\n\\\\n${output}\n\\\``
-          });
+    - name: Format Terraform code
+      run: terraform fmt
+
+    - name: Generate Terraform plan
+      run: terraform plan
+
+    - name: Display Terraform plan
+      run: |
+        echo "**Terraform Plan:**"
+        echo "---------------------"
+        terraform show -no-color plan
