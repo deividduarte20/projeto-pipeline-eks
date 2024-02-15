@@ -37,11 +37,3 @@ jobs:
     - name: Executar Terraform Plan
       run: terraform plan
 
-    - name: Criar comentário no PR com Terraform Plan
-      uses: softprops/action-gh-release@v1
-      with:
-        files: tfplan
-      env:
-         MY_GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
-      
-
