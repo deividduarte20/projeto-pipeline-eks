@@ -21,7 +21,3 @@ variable "cluster-version" {
 variable "region" {
   default = "us-east-1"
 }
-
-# variable "create_kubeconfig" {
-#   default = true
-# }
