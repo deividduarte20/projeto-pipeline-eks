@@ -3,6 +3,8 @@ from flask_restful import Api, Resource
 from flasgger import Swagger
 from prometheus_client import Counter, generate_latest, REGISTRY, CollectorRegistry, CONTENT_TYPE_LATEST
 
+REQUESTS = Counter('http_requests_total', 'Total number of requests received')
+
 app_name = 'comentarios'
 app = Flask(app_name)
 api = Api(app)
@@ -17,6 +19,7 @@ comments_counter = Counter('comments_created_total', 'Total number of comments c
 def metrics():
     registry = CollectorRegistry()
     data = generate_latest(registry)
+    REQUESTS.inc()
     return data, 200, {'Content-Type': CONTENT_TYPE_LATEST}
 
 class HealthCheck(Resource):
@@ -28,6 +31,7 @@ class HealthCheck(Resource):
           200:
             description: OK
         """
+        REQUESTS.inc()
         return {'status': 'healthy'}
 
 class Comment(Resource):
@@ -55,6 +59,7 @@ class Comment(Resource):
           200:
             description: Comentário criado com sucesso.
         """
+        REQUESTS.inc()
         request_data = request.get_json()
 
         email = request_data['email']
@@ -97,7 +102,7 @@ class Comment(Resource):
             description: Conteúdo não encontrado.
         """
         content_id = '{}'.format(content_id)
-
+        REQUESTS.inc()
         if content_id in comments:
             return jsonify(comments[content_id])
         else:

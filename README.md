@@ -67,4 +67,4 @@ Em caso de dúvidas, pergunte.
 
 # Bem vindo ao projeto
 
-# O mesmo consiste em provisionar EKS com terraform, nginx ingress controller, prometheus stack e metrics-server utilizando pipeline
+# O mesmo consiste em provisionar EKS com terraform, kubeprometheus e metrics-server utilizando pipeline
