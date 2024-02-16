@@ -3,10 +3,12 @@ kind: Ingress
 metadata:
   name: ingress-prometheus-grafana
   namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
   ingressClassName: nginx
   rules:
-  - host: grafana.dtechdevops.shop
+  - host: grafana.dtechdevops.shop # Alterar para seu domínio
     http:
       paths:
       - path: /

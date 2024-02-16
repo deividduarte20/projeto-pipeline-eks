@@ -1,18 +1,20 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ingress-prometheus-grafana
+  name: ingress-prometheus
   namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
   ingressClassName: nginx
   rules:
-  - host: prometheus.dtechdevops.shop
+  - host: prometheus.dtechdevops.shop # Alterar para seu domínio
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: prometheus-operated
+            name: prometheus-kube-prometheus-prometheus
             port:
-              number: 80
+              number: 9090
