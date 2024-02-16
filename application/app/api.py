@@ -1,11 +1,18 @@
 from flask import Flask, jsonify, request
 from flask_restful import Api, Resource
 from flasgger import Swagger
-from prometheus_client import Counter, generate_latest, REGISTRY, CollectorRegistry, CONTENT_TYPE_LATEST
-
-REQUESTS = Counter('http_requests_total', 'Total number of requests received')
+from prometheus_client import Counter, Histogram, generate_latest, REGISTRY, CollectorRegistry, CONTENT_TYPE_LATEST
+from prometheus_flask_exporter import PrometheusMetrics
 
 app_name = 'comentarios'
+
+app = Flask(app_name)
+metrics = PrometheusMetrics(app)
+
+
+REQUESTS = Counter('http_requests_total', 'Total number of requests received')
+LATENCY = Histogram('http_request_latency_seconds', 'HTTP request latency in seconds')
+
 app = Flask(app_name)
 api = Api(app)
 swagger = Swagger(app)
@@ -17,8 +24,7 @@ comments_counter = Counter('comments_created_total', 'Total number of comments c
 
 @app.route('/metrics')
 def metrics():
-    registry = CollectorRegistry()
-    data = generate_latest(registry)
+    data = generate_latest(REGISTRY)
     REQUESTS.inc()
     return data, 200, {'Content-Type': CONTENT_TYPE_LATEST}
 
@@ -35,6 +41,7 @@ class HealthCheck(Resource):
         return {'status': 'healthy'}
 
 class Comment(Resource):
+    @LATENCY.time()
     def post(self):
         """
         Endpoint para criar um novo comentário.
@@ -85,6 +92,7 @@ class Comment(Resource):
         }
         return jsonify(response)
 
+    @LATENCY.time()
     def get(self, content_id):
         """
         Endpoint para listar comentários associados a um ID de conteúdo.

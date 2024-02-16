@@ -14,7 +14,7 @@ spec:
         app: api-new-comments
       annotations:
           prometheus.io/scrape: "true"
-          prometheus.io/port: "5000"  # ajuste conforme a porta do seu aplicativo
+          prometheus.io/port: "80"  # ajuste conforme a porta do seu aplicativo
           prometheus.io/path: "/metrics"  # ajuste conforme o caminho do endpoint de métricas do seu aplicativo
     spec:
       containers:
