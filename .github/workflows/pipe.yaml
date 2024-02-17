@@ -62,13 +62,17 @@ jobs:
       run: |
         kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml --validate=false
 
-    - name: Deploy to EKS
+    - name: Check if namespace exists
+      run: kubectl get namespace app || echo "Namespace app does not exist"
+
+    - name: Create namespace if not exists
+      run: kubectl create namespace app
+
+    - name: Deploy application comments to EKS
       run: |
-        kubectl create namespace app
         kubectl apply -f manifests/deployment.yaml
         kubectl apply -f manifests/service.yaml
         kubectl apply -f manifests/hpa.yaml
-
 
     - name: Install Helm
       run: |
