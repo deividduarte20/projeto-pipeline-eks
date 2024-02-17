@@ -63,10 +63,11 @@ jobs:
         kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml --validate=false
 
     - name: Check if namespace exists
-      run: kubectl get namespace app || echo "Namespace app does not exist"
-
-    - name: Create namespace if not exists
-      run: kubectl create namespace app
+      run: |
+        kubectl create namespace app || true
+        if [ $? -ne 0 ]; then
+          echo "Namespace app already exists"
+        fi
 
     - name: Deploy application comments to EKS
       run: |
