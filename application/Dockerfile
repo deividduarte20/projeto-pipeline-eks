@@ -19,7 +19,7 @@ WORKDIR /app
 COPY --from=builder /app /app
 
 # Instale o gunicorn e o Flask
-RUN pip install gunicorn==20.0.4 Flask==2.0.1 flask_restful==0.3.9 prometheus-client==0.11.0 flasgger==0.9.5 prometheus-flask-exporter==0.23.0
+RUN pip install gunicorn==20.0.4 Flask==3.0.2 flask_restful==0.3.9 prometheus-client==0.11.0 flasgger==0.9.5 prometheus-flask-exporter==0.23.0
 
 # Exponha a porta em que a aplicação será executada
 EXPOSE 8000

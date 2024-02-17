@@ -23,13 +23,13 @@ jobs:
     - name: Login to Amazon ECR
       id: login-ecr
       run: |
-        aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $account.dkr.ecr.us-east-1.amazonaws.com
+        aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 825223353827.dkr.ecr.us-east-1.amazonaws.com
 
     - name: Build and Push Docker Image
       run: |
         cd application
-        docker build -t $account.dkr.ecr.us-east-1.amazonaws.com/$repository:v1 .
-        docker push $account.dkr.ecr.us-east-1.amazonaws.com/$repository:v1
+        docker build -t 825223353827.dkr.ecr.us-east-1.amazonaws.com/new-comments:v1 .
+        docker push 825223353827.dkr.ecr.us-east-1.amazonaws.com/new-comments:v1
 
   deploy:
     runs-on: ubuntu-latest
@@ -55,7 +55,7 @@ jobs:
 
     - name: Update Kubeconfig
       run: |
-        aws eks --region us-east-1 update-kubeconfig --name $cluster_n
+        aws eks --region us-east-1 update-kubeconfig --name duarte
         chmod 600 ~/.kube/config
 
     - name: Install metrics Server

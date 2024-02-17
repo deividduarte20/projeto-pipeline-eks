@@ -2,7 +2,7 @@
 
 echo "Digite escolha um nome para o repositório ECR: "
 read reposit
-aws ecr create-repository --repository-name $reposit
+# aws ecr create-repository --repository-name $reposit
 sed -i -e "s/\$repository/$reposit/g" ./.github/workflows/pipe.yaml
 
 echo "Digite um nome para o cluster Kubernetes EKS: "
