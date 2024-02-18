@@ -1,35 +1,42 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response
 from flask_restful import Api, Resource
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 from flasgger import Swagger
-from prometheus_client import Counter, Histogram, generate_latest, REGISTRY, CollectorRegistry, CONTENT_TYPE_LATEST
-from prometheus_flask_exporter import PrometheusMetrics
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from functools import wraps
 
-app_name = 'comentarios'
+def configure_opentelemetry():
+    print("Configurando OpenTelemetry")
+    provider = TracerProvider()
+    jaeger_exporter = JaegerExporter(
+        agent_host_name='jaeger-query.jaeger.svc.cluster.local',
+        agent_port=14268,
+    )
+    span_processor = BatchSpanProcessor(jaeger_exporter)
+    provider.add_span_processor(span_processor)
+    trace.set_tracer_provider(provider)
+    print("OpenTelemetry configurado")
 
-app = Flask(app_name)
-metrics = PrometheusMetrics(app)
+configure_opentelemetry()
 
+app = Flask(__name__)
+FlaskInstrumentor().instrument()
+api = Api(app)
 
+comments = {}
 REQUESTS = Counter('http_requests_total', 'Total number of requests received')
 LATENCY = Histogram('http_request_latency_seconds', 'HTTP request latency in seconds')
 
-app = Flask(app_name)
-api = Api(app)
+# Configuração do Swagger
 swagger = Swagger(app)
-
-app.debug = True
-
-comments = {}
-comments_counter = Counter('comments_created_total', 'Total number of comments created')
-
-@app.route('/metrics')
-def metrics():
-    data = generate_latest(REGISTRY)
-    REQUESTS.inc()
-    return data, 200, {'Content-Type': CONTENT_TYPE_LATEST}
 
 class HealthCheck(Resource):
     def get(self):
+        REQUESTS.inc()
         """
         Endpoint que verifica a saúde da aplicação.
         ---
@@ -37,8 +44,7 @@ class HealthCheck(Resource):
           200:
             description: OK
         """
-        REQUESTS.inc()
-        return {'status': 'healthy'}
+        return jsonify({'status': 'healthy'})
 
 class Comment(Resource):
     @LATENCY.time()
@@ -66,31 +72,13 @@ class Comment(Resource):
           200:
             description: Comentário criado com sucesso.
         """
-        REQUESTS.inc()
         request_data = request.get_json()
-
         email = request_data['email']
         comment = request_data['comment']
-        content_id = '{}'.format(request_data['content_id'])
-
-        new_comment = {
-            'email': email,
-            'comment': comment,
-        }
-
-        comments_counter.inc()
-
-        if content_id in comments:
-            comments[content_id].append(new_comment)
-        else:
-            comments[content_id] = [new_comment]
-
-        message = 'comment created and associated with content_id {}'.format(content_id)
-        response = {
-            'status': 'SUCCESS',
-            'message': message,
-        }
-        return jsonify(response)
+        content_id = str(request_data['content_id'])
+        new_comment = {'email': email, 'comment': comment}
+        comments.setdefault(content_id, []).append(new_comment)
+        return jsonify({'status': 'SUCCESS', 'message': f'comment created and associated with content_id {content_id}'})
 
     @LATENCY.time()
     def get(self, content_id):
@@ -109,20 +97,24 @@ class Comment(Resource):
           404:
             description: Conteúdo não encontrado.
         """
-        content_id = '{}'.format(content_id)
+        content_id = str(content_id)
         REQUESTS.inc()
         if content_id in comments:
-            return jsonify(comments[content_id])
+            return jsonify(comments.get(content_id, []))
         else:
-            message = 'content_id {} not found'.format(content_id)
-            response = {
-                'status': 'NOT-FOUND',
-                'message': message,
-            }
-            return jsonify(response), 404
+            message = f'content_id {content_id} not found'
+            return jsonify({'status': 'NOT-FOUND', 'message': message}), 404
 
+# Adiciona recursos à API
 api.add_resource(HealthCheck, '/')
 api.add_resource(Comment, '/api/comment/new', '/api/comment/list/<content_id>')
 
+# Adiciona um novo endpoint para as métricas
+@app.route('/metrics')
+@LATENCY.time()
+def metrics():
+    REQUESTS.inc()
+    return Response(generate_latest(), content_type=CONTENT_TYPE_LATEST)
+
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)

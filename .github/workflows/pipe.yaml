@@ -58,7 +58,7 @@ jobs:
         aws eks --region us-east-1 update-kubeconfig --name duarte
         chmod 600 ~/.kube/config
 
-    - name: Install metrics Server
+    - name: Install metrics server
       run: |
         kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml --validate=false
 
@@ -69,11 +69,14 @@ jobs:
           echo "Namespace app already exists"
         fi
 
-    - name: Deploy application comments to EKS
+    - name: Deploy applications comments to EKS
       run: |
         kubectl apply -f manifests/deployment.yaml
         kubectl apply -f manifests/service.yaml
         kubectl apply -f manifests/hpa.yaml
+        kubectl apply -f manifests/deploy-nginx-ingress-controller.yaml
+        kubectl create namespace jaeger
+        kubectl create namespace otel
 
     - name: Install Helm
       run: |
@@ -89,4 +92,8 @@ jobs:
     - name: Deploy Helm Chart
       run: |
         helm install prometheus prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace
+
+    - name: Install OpenTelemetry Collector
+      run: |
+        kubectl apply -f https://raw.githubusercontent.com/open-telemetry/opentelemetry-collector/v0.94.0/examples/k8s/otel-config.yaml -n otel
         
