@@ -9,6 +9,7 @@
 ## Pré-requisitos
 
 * Conta AWS com acesso à CLI da AWS.
+* Bucket para utilização de armazenamento do terraform state.
 * Ferramenta `kubectl`, `aws-cli` e `git` instalada localmente.
 
 ## 1. Clone o repositório
