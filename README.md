@@ -1,14 +1,10 @@
 # Bem vindo ao projeto
 
-### Este repositório contém um exemplo de implementação de uma pipeline de CI/CD para um cluster EKS (Amazon Elastic Kubernetes Service) e uma aplicação python.
+### Este projeto implementa uma pipeline para automatizar a criação, implantação e o monitoramento de aplicação em um cluster Amazon EKS. A pipeline utiliza ferramentas como helm, kube-prometheus e Grafana para fornecer um ambiente completo e gerenciável.
 
 <img src="diagrama/diagrama-projeto-eks.png" alt="Projeto EKS" width="600%" height="200%">
 
 [Clique aqui para abrir o diagrama com animação](diagrama/diagrama-projeto-eks.html)
-
-## Introdução
-
-### Este projeto implementa uma pipeline para automatizar a criação, a implantação e o monitoramento de aplicações em um cluster Amazon EKS. A pipeline utiliza ferramentas como kube-prometheus e Grafana para fornecer um ambiente completo e gerenciável.
 
 ## Pré-requisitos
 
@@ -20,9 +16,9 @@
 git clone https://github.com/deividduarte20/projeto-pipeline-eks.git
 ```
 
-## 2. Entre no diretório e branch template
+## 2. Entre no diretório e na branch 
 ```bash
-cd projeto-pipeline-eks ; git checkout repo/template 
+cd projeto-pipeline-eks && git checkout repo/template
 ```
 
 ## 3. Preencha informações importantes para a pipeline de forma automatizada provida pelo shell script 
