@@ -68,4 +68,9 @@ git push origin add/pipe
 **Comentário:** `/api/comment/new` </br>
 **Lista comentário:** `/api/comment/list/id`</br>
 
-<strong>Ao fim do provisionamento automatizado via pipeline, temos alguns arquivos no caminho manifests/manifestos-manual que necessitam de alteração de informações como domínio</strong>
+<strong>Ao fim do provisionamento automatizado via pipeline, temos alguns arquivos no caminho manifests/manifestos-manual/ que necessitam de alteração de informações como domínio</strong>
+
+- Para execução dos manifestos após o passo anterior, execute:
+```bash
+kubectl apply -f manifests/manifestos-manual/*
+```
