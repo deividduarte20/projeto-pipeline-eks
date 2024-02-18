@@ -22,6 +22,9 @@ spec:
         image: 825223353827.dkr.ecr.us-east-1.amazonaws.com/new-comments:v1
         ports:
         - containerPort: 8000
+        env:
+        - name: OTELCOL_SERVER
+          value: "http://otel-collector-daemonset-collector.otel-collector.svc.cluster.local:4317"
         resources:
           requests:
             memory: "64Mi"

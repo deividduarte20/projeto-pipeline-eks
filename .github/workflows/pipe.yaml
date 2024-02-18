@@ -76,6 +76,7 @@ jobs:
         kubectl apply -f manifests/hpa.yaml
         kubectl apply -f manifests/deploy-nginx-ingress-controller.yaml
         kubectl create namespace jaeger
+        kubectl create namespace otel
 
     - name: Install Helm
       run: |
@@ -91,4 +92,8 @@ jobs:
     - name: Deploy Helm Chart
       run: |
         helm install prometheus prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace
+
+    - name: Install OpenTelemetry Collector
+      run: |
+        kubectl apply -f https://raw.githubusercontent.com/open-telemetry/opentelemetry-collector/v0.94.0/examples/k8s/otel-config.yaml -n otel
         

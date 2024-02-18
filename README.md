@@ -1,6 +1,10 @@
 # Bem vindo ao projeto
 
-### Este repositório contém um exemplo de implementação de uma pipeline de CI/CD para um cluster EKS (Amazon Elastic Kubernetes Service)
+### Este repositório contém um exemplo de implementação de uma pipeline de CI/CD para um cluster EKS (Amazon Elastic Kubernetes Service) e uma aplicação python.
+
+<img src="diagrama/diagrama-projeto-eks.png" alt="Projeto EKS" width="600%" height="200%">
+
+[Clique aqui para abrir o diagrama com animação](diagrama/diagrama-projeto-eks.html)
 
 ## Introdução
 
@@ -16,9 +20,9 @@
 git clone https://github.com/deividduarte20/projeto-pipeline-eks.git
 ```
 
-## 2. Entre no diretório
+## 2. Entre no diretório e branch template
 ```bash
-cd projeto-pipeline-eks
+cd projeto-pipeline-eks ; git checkout repo/template 
 ```
 
 ## 3. Preencha informações importantes para a pipeline de forma automatizada provida pelo shell script 
@@ -68,9 +72,9 @@ git push origin add/pipe
 **Comentário:** `/api/comment/new` </br>
 **Lista comentário:** `/api/comment/list/id`</br>
 
-<strong>Ao fim do provisionamento automatizado via pipeline, temos alguns arquivos no caminho manifests/manifestos-manual/ que necessitam de alteração de informações como domínio</strong>
+<strong>Ao fim do provisionamento automatizado via pipeline, temos alguns arquivos no caminho manifests/manifestos-adicionais/ que necessitam de alteração de informações como domínio</strong>
 
 - Para execução dos manifestos após o passo anterior, execute:
 ```bash
-kubectl apply -f manifests/manifestos-manual/*
+kubectl apply -f manifests/manifestos-adicionais/*
 ```
