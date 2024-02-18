@@ -7,8 +7,9 @@ WORKDIR /app
 COPY app /app
 COPY requirements.txt /app
 
-# Instale as dependências
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# Instale as dependências do Jaeger
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
 
 # Estágio 2: Imagem final
 FROM python:3.7.4-alpine
@@ -18,8 +19,8 @@ WORKDIR /app
 # Copie os arquivos necessários do estágio de construção
 COPY --from=builder /app /app
 
-# Instale o gunicorn e o Flask
-RUN pip install gunicorn==20.0.4 Flask==2.0.1 flask_restful==0.3.9 prometheus-client==0.11.0 flasgger==0.9.5 prometheus-flask-exporter==0.23.0
+# Instale as dependências necessárias apenas para a execução (não de construção)
+RUN pip install --upgrade pip && pip install -r requirements.txt && pip install flask-restful==0.3.9 flasgger==0.9.5 opentelemetry-api==1.22.0 flask_opentracing==1.1.0 opentelemetry-api==1.22.0 opentelemetry-sdk==1.22.0 opentelemetry-exporter-jaeger==1.21.0 opentelemetry-instrumentation==0.43b0 opentelemetry-instrumentation-flask==0.43b0 prometheus-client==0.11.0
 
 # Exponha a porta em que a aplicação será executada
 EXPOSE 8000
