@@ -4,7 +4,7 @@
 
 <img src="diagrama/diagrama-projeto-eks.png" alt="Projeto EKS" width="600%" height="200%">
 
-[Clique aqui para abrir o diagrama com animação](diagrama/diagrama-projeto-eks.html)
+[Clique aqui para visualizar o diagrama com animação](https://viewer.diagrams.net/?tags=%7B%7D&highlight=0000ff&layers=1&nav=1&title=projeto-eks.drawio#Uhttps%3A%2F%2Fdrive.google.com%2Fuc%3Fid%3D1HovHqJANtvGkM9Le20zK01tlpREg6AaF%26export%3Ddownload)
 
 ## Pré-requisitos
 
