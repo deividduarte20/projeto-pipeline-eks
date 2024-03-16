@@ -37,3 +37,14 @@ jobs:
     - name: Executar Terraform Plan
       run: terraform plan
 
+    - name: Criar Check Run
+      uses: actions/github-check-run@v2
+      with:
+        name: Terraform EKS Pipeline
+        conclusion: success  # Altere para 'failure' se a pipeline falhar
+        output: |
+          **Resultado da Pipeline:**
+          A pipeline foi executada com sucesso.
+
+          Pode adicionar mais informações relevantes aqui.
+
