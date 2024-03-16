@@ -61,6 +61,7 @@ git push origin add/pipe
 
 ### 5. Rotas da API
 
+
 **Health:** `/` </br>
 **Métricas:** `/metrics`</br>
 **Swagger:** `/apidocs` </br>
