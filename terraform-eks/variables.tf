@@ -1,5 +1,5 @@
 variable "name-cluster" {
-  default = "$cluster_n"
+  default = "duarte"
 }
 
 variable "instance-type" {
