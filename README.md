@@ -79,7 +79,7 @@ kubectl apply -f deploy-nginx-ingress-controller.yaml
 
 ### Aplique a regra de ingress da aplicação
 
-**Observação:** Antes de aplicar a regra de ingress altere o sub-domínio 
+**Observação:** Antes de aplicar a regra de ingress altere o domínio 
 ```bash
 kubectl apply -f ingress.yaml
 ```
