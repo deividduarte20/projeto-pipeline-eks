@@ -17,7 +17,7 @@ git clone https://github.com/deividduarte20/projeto-pipeline-eks.git
 
 ## 2. Entre no diretório e na branch 
 ```bash
-cd projeto-pipeline-eks && git checkout repo/template
+cd projeto-pipeline-eks && git checkout repo/template-1
 ```
 
 ## 3. Preencha informações importantes para a pipeline de forma automatizada provida pelo shell script 
