@@ -69,12 +69,7 @@ git push origin add/pipe
 
 <strong>Ao fim do provisionamento automatizado via pipeline, temos alguns arquivos no caminho manifests/manifestos-adicionais/ que necessitam de alteração de informações como domínio</strong>
 
-### 6. Atualiza configuração do kubeconfig em seu terminal
-```bash
-aws eks --region us-east-1 update-kubeconfig --name $cluster_n
-```
-
-### 7. Instale o nginx ingress controller
+### 6. Instale o nginx ingress controller
 
 **Observação:** Antes de instalar o nginx ingress controller é necessário inserir o arn do certificado no manifesto deploy-nginx-ingress-controller.yaml na linha 348 e adicione a subnet do eks na linha 329
 
@@ -84,7 +79,7 @@ kubectl apply -f deploy-nginx-ingress-controller.yaml
 
 ### Aplique a regra de ingress da aplicação
 
-**Observação:** Antes de aplicar a regra de ingress altere o sub-domínio 
+**Observação:** Antes de aplicar a regra de ingress altere o domínio 
 ```bash
 kubectl apply -f ingress.yaml
 ```
