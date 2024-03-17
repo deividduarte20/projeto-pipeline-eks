@@ -96,7 +96,11 @@ kubectl apply -f ingress-jaeger.yaml
 kubectl apply -f ingress-grafana.yaml
 ```
 
-### Exemplos
+### Descobrir senha de acesso ao grafana
+```bash
+password=$(kubectl get secrets prometheus-grafana -n monitoring -o yaml | grep admin-password: | awk '{print $2}' | base64 --decode)
+echo "Senha descriptografada: $password"
+```
 
 ### Aqui estão alguns exemplos visuais do projeto:
 
