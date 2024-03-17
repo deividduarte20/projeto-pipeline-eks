@@ -69,7 +69,46 @@ git push origin add/pipe
 
 <strong>Ao fim do provisionamento automatizado via pipeline, temos alguns arquivos no caminho manifests/manifestos-adicionais/ que necessitam de alteração de informações como domínio</strong>
 
-- Para execução dos manifestos após o passo anterior, execute:
+### 6. Instale o nginx ingress controller
+
+**Observação:** Antes de instalar o nginx ingress controller é necessário inserir o arn do certificado no manifesto deploy-nginx-ingress-controller.yaml na linha 348 e adicione a subnet do eks na linha 329
+
 ```bash
-kubectl apply -f manifests/manifestos-adicionais/*
+kubectl apply -f deploy-nginx-ingress-controller.yaml
 ```
+
+### Aplique a regra de ingress da aplicação
+
+**Observação:** Antes de aplicar a regra de ingress altere o sub-domínio 
+```bash
+kubectl apply -f ingress.yaml
+```
+
+### Instale o jaeger
+```bash
+kubectl apply -f jaeger-manifest.yaml -n jaeger
+```
+
+### Aplique as regras de ingress do Grafana e Jaeger
+**Observação:** Altere o domínio nos arquivos ingress-jaeger.yaml e ingress-grafana.yaml
+```bash
+kubectl apply -f ingress-jaeger.yaml
+kubectl apply -f ingress-grafana.yaml
+```
+
+### Exemplos
+
+### Aqui estão alguns exemplos visuais do projeto:
+
+#### Grafana
+![Grafana](diagrama/grafana1.png)
+
+#### Métricas
+![Metricas](diagrama/metrics.png)
+
+#### Swagger
+![Swagger-post](diagrama/swagger-post.png)
+![Swagger-get](diagrama/swagger-get.png)
+
+#### Prometheus
+![Swagger-get](diagrama/prometheus.png).
