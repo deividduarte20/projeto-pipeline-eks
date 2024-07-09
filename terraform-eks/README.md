@@ -34,68 +34,36 @@ terraform apply
 kubectl get nodes
 ```
 
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 4.66.1 |
-
-## Providers
-
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 4.66.1 |
-
-## EKS Version
-
-| EKS  | Version  |
-|------|---------|
-| eks  |  1.28   |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 5.49.0 |
+| <a name="requirement_helm"></a> [helm](#requirement\_helm) | 2.13.2 |
+| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | 2.30.0 |
 
 
-## Resources
+## Modules
 
-| Name | Type |
-|------|------|
-| [aws_eks_cluster.eks](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/eks_cluster) | resource |
-| [aws_eks_node_group.node-grp](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/eks_node_group) | resource |
-| [aws_iam_instance_profile.worker](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/iam_instance_profile) | resource |
-| [aws_iam_policy.autoscaler](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/iam_policy) | resource |
-| [aws_iam_role.master](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/iam_role) | resource |
-| [aws_iam_role.worker](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/iam_role) | resource |
-| [aws_iam_role_policy_attachment.AmazonEC2ContainerRegistryReadOnly](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/iam_role_policy_attachment) | resource |
-| [aws_iam_role_policy_attachment.AmazonEKSClusterPolicy](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/iam_role_policy_attachment) | resource |
-| [aws_iam_role_policy_attachment.AmazonEKSServicePolicy](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/iam_role_policy_attachment) | resource |
-| [aws_iam_role_policy_attachment.AmazonEKSVPCResourceController](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/iam_role_policy_attachment) | resource |
-| [aws_iam_role_policy_attachment.AmazonEKSWorkerNodePolicy](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/iam_role_policy_attachment) | resource |
-| [aws_iam_role_policy_attachment.AmazonEKS_CNI_Policy](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/iam_role_policy_attachment) | resource |
-| [aws_iam_role_policy_attachment.AmazonSSMManagedInstanceCore](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/iam_role_policy_attachment) | resource |
-| [aws_iam_role_policy_attachment.autoscaler](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/iam_role_policy_attachment) | resource |
-| [aws_iam_role_policy_attachment.s3](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/iam_role_policy_attachment) | resource |
-| [aws_iam_role_policy_attachment.x-ray](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/iam_role_policy_attachment) | resource |
-| [aws_instance.kubectl-server](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/instance) | resource |
-| [aws_internet_gateway.gw](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/internet_gateway) | resource |
-| [aws_route_table.rtb](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/route_table) | resource |
-| [aws_route_table_association.a-1](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/route_table_association) | resource |
-| [aws_route_table_association.a-2](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/route_table_association) | resource |
-| [aws_security_group.allow_tls](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/security_group) | resource |
-| [aws_subnet.public-1](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/subnet) | resource |
-| [aws_subnet.public-2](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/subnet) | resource |
-| [aws_vpc.main](https://registry.terraform.io/providers/hashicorp/aws/4.66.1/docs/resources/vpc) | resource |
+| Name | Source | Version |
+|------|--------|---------|
+| <a name="module_eks_aws_load_balancer_controller"></a> [eks\_aws\_load\_balancer\_controller](#module\_eks\_aws\_load\_balancer\_controller) | ./modules/aws-load-balancer-controller | n/a |
+| <a name="module_eks_cluster"></a> [eks\_cluster](#module\_eks\_cluster) | ./modules/cluster | n/a |
+| <a name="module_eks_managed_node_group"></a> [eks\_managed\_node\_group](#module\_eks\_managed\_node\_group) | ./modules/managed-node-group | n/a |
+| <a name="module_eks_network"></a> [eks\_network](#module\_eks\_network) | ./modules/network | n/a |
+
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_instance-ami"></a> [instance-ami](#input\_instance-ami) | n/a | `string` | `"ami-04cb4ca688797756f"` | yes |
-| <a name="input_instance-type"></a> [instance-type](#input\_instance-type) | n/a | `string` | `"t3a.medium"` | yes |
-| <a name="input_key"></a> [key](#input\_key) | n/a | `string` | `"name-key"` | yes |
-| <a name="input_name-cluster"></a> [name-cluster](#input\_name-cluster) | n/a | `string` | `"name-cluster"` | yes |
-| <a name="input_name-sg"></a> [name-sg](#input\_name-sg) | n/a | `string` | `"name-sg"` | yes |
-| <a name="input_cluster-version"></a> [cluster-version](#input\_cluster-version) | n/a | `string` | `"cluster-version"` | yes |
+| <a name="input_cidr_block"></a> [cidr\_block](#input\_cidr\_block) | Networking CIDR block to be used for the VPC | `string` | `"10.0.0.0/16"` | no |
+| <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Project Name to be used in Tags | `string` | `"projeto-eks"` | no |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| <a name="output_cluster-arn"></a> [cluster-arn](#output\_cluster-arn) | after |
+| <a name="output_eks_cluster"></a> [eks\_cluster](#output\_eks\_cluster) | n/a |
+<!-- END_TF_DOCS -->

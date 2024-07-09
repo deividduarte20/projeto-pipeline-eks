@@ -1,36 +1,31 @@
-module "eks" {
-  source          = "./modules/eks"
-  name-cluster    = var.name-cluster
-  instance-ami    = var.instance-ami
-  instance-type   = var.instance-type
-  name-sg         = var.name-sg
-  cluster-version = var.cluster-version
-  region          = var.region
+module "eks_network" {
+  source       = "./modules/network"
+  cidr_block   = var.cidr_block
+  project_name = var.project_name
+  tags         = local.tags
 }
 
-resource "null_resource" "eks_cluster_config" {
-  # count = var.create_kubeconfig ? 1 : 0
-
-  depends_on = [
-    module.eks.eks,
-    module.eks.eks_cluster_ready,
-  ]
-
-
-  provisioner "local-exec" {
-    command = "sleep 30" # Aguarde 30 segundos para dar tempo ao cluster EKS de ser totalmente provisionado
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      aws eks --region ${var.region} update-kubeconfig --name ${var.name-cluster}
-    EOT
-  }
+module "eks_cluster" {
+  source           = "./modules/cluster"
+  project_name     = var.project_name
+  tags             = local.tags
+  public_subnet_1a = module.eks_network.subnet_public_1a
+  public_subnet_1b = module.eks_network.subnet_public_1b
 }
 
-# resource "null_resource" "executa_script" {
-#   depends_on = [null_resource.eks_cluster_config]
-#   provisioner "local-exec" {
-#     command = "scripts/script.sh"
-#   }
-# }
+module "eks_managed_node_group" {
+  source            = "./modules/managed-node-group"
+  project_name      = var.project_name
+  cluster_name      = module.eks_cluster.cluster_name
+  subnet_private_1a = module.eks_network.subnet_priv_1a
+  subnet_private_1b = module.eks_network.subnet_priv_1b
+  tags              = local.tags
+}
+
+module "eks_aws_load_balancer_controller" {
+  source       = "./modules/aws-load-balancer-controller"
+  project_name = var.project_name
+  tags         = local.tags
+  oidc         = module.eks_cluster.oidc
+  cluster_name = module.eks_cluster.cluster_name
+}
