@@ -1,5 +1,5 @@
 # Estágio 1: Construção da aplicação
-FROM python:3.7.4-alpine AS builder
+FROM python:3.8-alpine AS builder
 
 WORKDIR /app
 
