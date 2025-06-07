@@ -105,7 +105,6 @@ jobs:
     - name: Deploy Prometheus/Grafana Ingress
       run: |
         kubectl apply -f manifests/prometheus-ingress.yaml
-
     - name: Deploy ServiceMonitor
       run: |
         # Aguarda o CRD do ServiceMonitor estar disponível
@@ -113,3 +112,4 @@ jobs:
         # Aguarda o Prometheus estar pronto
         kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
         kubectl apply -f manifests/service-monitor.yaml
+
