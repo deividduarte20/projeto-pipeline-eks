@@ -16,28 +16,48 @@ check_error() {
     fi
 }
 
-# Função para esperar recursos serem removidos
-wait_for_deletion() {
-    local resource_type=$1
-    local resource_name=$2
-    local namespace=$3
+# Função para remover registros DNS no Route 53
+remove_route53_records() {
+    echo -e "${YELLOW}Removendo registros DNS no Route 53...${NC}"
     
-    echo -e "${YELLOW}Aguardando remoção de $resource_name...${NC}"
-    for ((i=0; i<12; i++)); do
-        if ! kubectl get $resource_type $resource_name -n $namespace 2>/dev/null; then
-            return 0
-        fi
-        sleep 5
+    # Substitua pela sua Hosted Zone ID
+    HOSTED_ZONE_ID="SUA_HOSTED_ZONE_ID"  # Ex.: Z1234567890ABC
+    if [ -z "$HOSTED_ZONE_ID" ] || [ "$HOSTED_ZONE_ID" == "SUA_HOSTED_ZONE_ID" ]; then
+        echo -e "${YELLOW}Hosted Zone ID não configurada, pulando remoção de registros DNS${NC}"
+        return 0
+    fi
+
+    # Lista todos os registros na Hosted Zone
+    RECORD_SETS=$(aws route53 list-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --query 'ResourceRecordSets[?Type==`A` || Type==`CNAME`].Name' --output text)
+    
+    for RECORD in $RECORD_SETS; do
+        # Cria um arquivo JSON para deletar o registro
+        cat << EOF > delete-record.json
+{
+  "Comment": "Delete record set created by ExternalDNS",
+  "Changes": [
+    {
+      "Action": "DELETE",
+      "ResourceRecordSet": {
+        "Name": "$RECORD",
+        "Type": "A",
+        "TTL": 300,
+        "ResourceRecords": []
+      }
+    }
+  ]
+}
+EOF
+        aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file://delete-record.json
+        check_error "Falha ao remover registro DNS $RECORD"
     done
-    echo -e "${RED}Timeout aguardando remoção de $resource_name${NC}"
-    exit 1
+    rm -f delete-record.json
 }
 
 # Função para remover endereços IP públicos
 remove_elastic_ips() {
     echo -e "${YELLOW}Removendo Elastic IPs associados à VPC...${NC}"
     
-    # Obtém o ID da VPC
     VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=eks-vpc" --query 'Vpcs[0].VpcId' --output text)
     check_error "Falha ao obter ID da VPC"
     
@@ -46,19 +66,15 @@ remove_elastic_ips() {
         return 0
     fi
 
-    # Lista Elastic IPs associados à VPC
     EIP_ALLOCATIONS=$(aws ec2 describe-addresses --filters "Name=domain,Values=vpc" --query 'Addresses[*].AllocationId' --output text)
     
     for ALLOC_ID in $EIP_ALLOCATIONS; do
-        # Desassocia o EIP primeiro
         ASSOC_ID=$(aws ec2 describe-addresses --allocation-ids $ALLOC_ID --query 'Addresses[0].AssociationId' --output text)
         if [ ! -z "$ASSOC_ID" ] && [ "$ASSOC_ID" != "None" ]; then
             aws ec2 disassociate-address --association-id $ASSOC_ID
             check_error "Falha ao disassociar EIP $ALLOC_ID"
             sleep 5
         fi
-        
-        # Remove o EIP
         aws ec2 release-address --allocation-id $ALLOC_ID
         check_error "Falha ao remover EIP $ALLOC_ID"
     done
@@ -68,7 +84,6 @@ remove_elastic_ips() {
 force_remove_network_resources() {
     echo -e "${YELLOW}Forçando remoção de recursos de rede...${NC}"
     
-    # Obtém o ID da VPC
     VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=eks-vpc" --query 'Vpcs[0].VpcId' --output text)
     
     if [ -z "$VPC_ID" ] || [ "$VPC_ID" == "None" ]; then
@@ -100,54 +115,45 @@ force_remove_network_resources() {
     echo -e "${YELLOW}Removendo Network Interfaces...${NC}"
     ENIS=$(aws ec2 describe-network-interfaces --filters "Name=vpc-id,Values=$VPC_ID" --query 'NetworkInterfaces[*].NetworkInterfaceId' --output text)
     for ENI_ID in $ENIS; do
-        aws ec2 delete-network-interface --network-interface-id $ENI_ID
-        check_error "Falha ao remover ENI $ENI_ID"
+        aws ec2 delete-network-interface --network-interface-id $ENI_ID || true
     done
 
     # Remove Route Tables
     echo -e "${YELLOW}Removendo Route Tables...${NC}"
     RTBS=$(aws ec2 describe-route-tables --filters "Name=vpc-id,Values=$VPC_ID" --query 'RouteTables[*].RouteTableId' --output text)
     for RTB_ID in $RTBS; do
-        # Remove rotas não locais
         ROUTES=$(aws ec2 describe-route-tables --route-table-ids $RTB_ID --query 'RouteTables[0].Routes[?DestinationCidrBlock!=`172.31.0.0/16`].DestinationCidrBlock' --output text)
         for ROUTE in $ROUTES; do
-            aws ec2 delete-route --route-table-id $RTB_ID --destination-cidr-block $ROUTE
-            check_error "Falha ao remover rota $ROUTE da Route Table $RTB_ID"
+            aws ec2 delete-route --route-table-id $RTB_ID --destination-cidr-block $ROUTE || true
         done
-        aws ec2 delete-route-table --route-table-id $RTB_ID
-        check_error "Falha ao remover Route Table $RTB_ID"
+        aws ec2 delete-route-table --route-table-id $RTB_ID || true
     done
 
     # Remove Security Groups
     echo -e "${YELLOW}Removendo Security Groups...${NC}"
     SGS=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$VPC_ID" --query 'SecurityGroups[?GroupName!=`default`].GroupId' --output text)
     for SG_ID in $SGS; do
-        aws ec2 delete-security-group --group-id $SG_ID
-        check_error "Falha ao remover Security Group $SG_ID"
+        aws ec2 delete-security-group --group-id $SG_ID || true
     done
 
     # Remove Subnets
     echo -e "${YELLOW}Removendo Subnets...${NC}"
     SUBNETS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query 'Subnets[*].SubnetId' --output text)
     for SUBNET_ID in $SUBNETS; do
-        aws ec2 delete-subnet --subnet-id $SUBNET_ID
-        check_error "Falha ao remover Subnet $SUBNET_ID"
+        aws ec2 delete-subnet --subnet-id $SUBNET_ID || true
     done
 
     # Remove Internet Gateway
     echo -e "${YELLOW}Removendo Internet Gateway...${NC}"
     IGW_ID=$(aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=$VPC_ID" --query 'InternetGateways[0].InternetGatewayId' --output text)
     if [ ! -z "$IGW_ID" ] && [ "$IGW_ID" != "None" ]; then
-        aws ec2 detach-internet-gateway --internet-gateway-id $IGW_ID --vpc-id $VPC_ID
-        check_error "Falha ao desanexar Internet Gateway $IGW_ID"
-        aws ec2 delete-internet-gateway --internet-gateway-id $IGW_ID
-        check_error "Falha ao remover Internet Gateway $IGW_ID"
+        aws ec2 detach-internet-gateway --internet-gateway-id $IGW_ID --vpc-id $VPC_ID || true
+        aws ec2 delete-internet-gateway --internet-gateway-id $IGW_ID || true
     fi
 
     # Remove VPC
     echo -e "${YELLOW}Removendo VPC...${NC}"
-    aws ec2 delete-vpc --vpc-id $VPC_ID
-    check_error "Falha ao remover VPC $VPC_ID"
+    aws ec2 delete-vpc --vpc-id $VPC_ID || true
 }
 
 # Verificar se o diretório terraform-eks existe
@@ -165,46 +171,25 @@ cd terraform-eks || exit 1
 terraform init
 check_error "Falha ao inicializar Terraform"
 
-# Remover Karpenter e Node Groups
-terraform destroy -target=module.karpenter -target=module.node_group -auto-approve
-check_error "Falha ao remover Karpenter e Node Groups"
+# Remover registros DNS no Route 53
+remove_route53_records
 
-# Remover Load Balancer Controller e outros componentes
-terraform destroy -target=module.aws-load-balancer-controller -target=module.externaldns -target=module.ebs_csi_driver -auto-approve
-check_error "Falha ao remover Load Balancer Controller e outros componentes"
+# Remover todos os recursos Terraform
+echo -e "${YELLOW}Destruindo todos os recursos Terraform...${NC}"
+terraform destroy -auto-approve
+check_error "Falha ao destruir recursos Terraform"
 
-# Remover o cluster EKS
-terraform destroy -target=module.cluster_eks -auto-approve
-check_error "Falha ao remover o cluster EKS"
-
-# Remover recursos de rede
-echo -e "${YELLOW}Removendo recursos de rede...${NC}"
-
-# Remover Elastic IPs
+# Remover recursos de rede manualmente, se necessário
+echo -e "${YELLOW}Verificando recursos de rede remanescentes...${NC}"
 remove_elastic_ips
-
-# Forçar remoção de recursos de rede
 force_remove_network_resources
 
-# Remover estado do Terraform para recursos problemáticos
-echo -e "${YELLOW}Removendo estado do Terraform para recursos problemáticos...${NC}"
+# Limpar estado do Terraform para recursos problemáticos
+echo -e "${YELLOW}Limpando estado do Terraform...${NC}"
 terraform state rm module.network.aws_internet_gateway.igw || true
-check_error "Falha ao remover estado do Internet Gateway"
 terraform state rm module.network.aws_subnet.public[0] || true
-check_error "Falha ao remover estado da subnet pública 0"
 terraform state rm module.network.aws_subnet.public[1] || true
-check_error "Falha ao remover estado da subnet pública 1"
 terraform state rm module.network.aws_vpc.vpc || true
-check_error "Falha ao remover estado da VPC"
-
-# Remover o módulo de rede
-terraform destroy -target=module.network -auto-approve
-check_error "Falha ao destruir módulo de rede"
-
-# Remover todos os recursos restantes
-echo -e "${YELLOW}Removendo todos os recursos restantes...${NC}"
-terraform destroy -auto-approve
-check_error "Falha ao destruir recursos restantes"
 
 cd ..
 
