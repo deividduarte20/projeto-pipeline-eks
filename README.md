@@ -33,8 +33,6 @@
 **Health:** `/` </br>
 **Métricas:** `/metrics`</br>
 **Swagger:** `/apidocs` </br>
-**Comentário:** `/api/comment/new` </br>
-**Lista comentário:** `/api/comment/list/id`</br>
 
 ### Aqui estão alguns exemplos visuais do projeto:
 
@@ -45,8 +43,7 @@
 ![Metricas](diagrama/metrics.png)
 
 #### Swagger
-![Swagger-post](diagrama/swagger-post.png)
-![Swagger-get](diagrama/swagger-get.png)
+![Swagger](diagrama/swagger.png)
 
 #### Prometheus
 ![Swagger-get](diagrama/prometheus.png).
