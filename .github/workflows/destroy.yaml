@@ -32,50 +32,64 @@ jobs:
         with:
           terraform_version: 1.12.1
 
+      - name: Check EKS Cluster Existence
+        id: check_cluster
+        run: |
+          if aws eks describe-cluster --name devops-cluster --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+            echo "Cluster EKS devops-cluster existe, prosseguindo com a exclusão de recursos do Kubernetes."
+            echo "cluster_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Cluster EKS devops-cluster não existe ou já foi destruído, pulando exclusão de recursos do Kubernetes."
+            echo "cluster_exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Update Kubeconfig
+        if: steps.check_cluster.outputs.cluster_exists == 'true'
         run: |
           aws eks --region ${{ env.AWS_REGION }} update-kubeconfig --name devops-cluster
           chmod 600 ~/.kube/config
 
       - name: Check Kubernetes API Health
+        if: steps.check_cluster.outputs.cluster_exists == 'true'
         run: |
-          kubectl cluster-info
-          kubectl get nodes --no-headers | wc -l | grep -q "[1-9]" || (echo "Erro: Cluster EKS não está acessível ou não tem nós!" && exit 1)
+          kubectl cluster-info || (echo "Erro: Não foi possível acessar a API do Kubernetes, mas prosseguindo..." && exit 0)
+          kubectl get nodes --no-headers | wc -l | grep -q "[1-9]" || echo "Aviso: Nenhum nó encontrado no cluster, prosseguindo com a exclusão de recursos."
 
       - name: Delete Kubernetes Resources
+        if: steps.check_cluster.outputs.cluster_exists == 'true'
         run: |
           # Delete application resources in the app namespace
-          kubectl delete -f manifests/ingress.yaml --ignore-not-found=true
-          kubectl delete -f manifests/hpa.yaml --ignore-not-found=true
-          kubectl delete -f manifests/service.yaml --ignore-not-found=true
-          kubectl delete -f manifests/deployment.yaml --ignore-not-found=true
-          kubectl delete pvc --all -n app --ignore-not-found=true
+          kubectl delete -f manifests/ingress.yaml --ignore-not-found=true || true
+          kubectl delete -f manifests/hpa.yaml --ignore-not-found=true || true
+          kubectl delete -f manifests/service.yaml --ignore-not-found=true || true
+          kubectl delete -f manifests/deployment.yaml --ignore-not-found=true || true
+          kubectl delete pvc --all -n app --ignore-not-found=true || true
           kubectl wait --for=delete pod --all -n app --timeout=120s || true
-          kubectl delete namespace app --ignore-not-found=true
+          kubectl delete namespace app --ignore-not-found=true || true
           kubectl wait --for=delete namespace/app --timeout=120s || true
 
           # Delete monitoring resources
-          kubectl delete -f manifests/service-monitor.yaml --ignore-not-found=true
-          kubectl delete -f manifests/grafana-dashboard.yaml --ignore-not-found=true
-          kubectl delete -f manifests/prometheus-ingress.yaml --ignore-not-found=true
-          helm uninstall prometheus -n monitoring --wait --timeout=120s --ignore-not-found=true
-          kubectl delete pvc --all -n monitoring --ignore-not-found=true
+          kubectl delete -f manifests/service-monitor.yaml --ignore-not-found=true || true
+          kubectl delete -f manifests/grafana-dashboard.yaml --ignore-not-found=true || true
+          kubectl delete -f manifests/prometheus-ingress.yaml --ignore-not-found=true || true
+          helm uninstall prometheus -n monitoring --wait --timeout=120s --ignore-not-found=true || true
+          kubectl delete pvc --all -n monitoring --ignore-not-found=true || true
           kubectl wait --for=delete pod --all -n monitoring --timeout=120s || true
-          kubectl delete namespace monitoring --ignore-not-found=true
+          kubectl delete namespace monitoring --ignore-not-found=true || true
           kubectl wait --for=delete namespace/monitoring --timeout=120s || true
 
           # Delete externaldns resources
-          kubectl delete all --all -n externaldns --ignore-not-found=true
-          kubectl delete configmap --all -n externaldns --ignore-not-found=true
-          kubectl delete secret --all -n externaldns --ignore-not-found=true
+          kubectl delete all --all -n externaldns --ignore-not-found=true || true
+          kubectl delete configmap --all -n externaldns --ignore-not-found=true || true
+          kubectl delete secret --all -n externaldns --ignore-not-found=true || true
           kubectl wait --for=delete pod --all -n externaldns --timeout=120s || true
-          kubectl delete namespace externaldns --ignore-not-found=true
+          kubectl delete namespace externaldns --ignore-not-found=true || true
           kubectl wait --for=delete namespace/externaldns --timeout=120s || true
 
           # Remove finalizers, if any
           for ns in app monitoring externaldns; do
             if kubectl get namespace $ns -o jsonpath='{.metadata.finalizers}' 2>/dev/null | grep -q .; then
-              kubectl patch namespace $ns -p '{"metadata":{"finalizers":null}}' --type=merge
+              kubectl patch namespace $ns -p '{"metadata":{"finalizers":null}}' --type=merge || true
             fi
           done
 
