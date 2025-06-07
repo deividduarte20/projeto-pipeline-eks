@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: new-comments-monitor
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: api-new-comments
+  namespaceSelector:
+    matchNames:
+      - app
+  endpoints:
+    - port: metrics
+      interval: 15s
+      path: /metrics 

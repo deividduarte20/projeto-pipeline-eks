@@ -1,11 +1,13 @@
-resource "aws_vpc" "eks_vpc" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_support   = true
+// Aws vpc
+
+resource "aws_vpc" "vpc" {
+  cidr_block           = var.cidr_vpc
   enable_dns_hostnames = true
-  tags = merge(
-    var.tags,
-    {
-      Name = "${var.project_name}-vpc"
-    }
-  )
+  enable_dns_support   = true
+
+  tags = var.tags_vpc
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }

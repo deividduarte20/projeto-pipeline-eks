@@ -7,7 +7,7 @@ jobs:
     name: 'terraform destroy'
     runs-on: ubuntu-latest
     env:
-      TF_WORKING_DIR: 'terraform-eks/'
+      TF_WORKING_DIR: '/projeto-pipeline-eks'
 
     defaults:
       run:
@@ -25,13 +25,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Terraform Init
-        id: init
-        run: terraform init
-
-      - name: Terraform Validate
-        id: validate
-        run: terraform validate -no-color
-
-      - name: Terraform Destroy
-        run: terraform destroy -auto-approve
+      - name: Destroy resources
+        id: destroy
+        run: ./destroy.sh
