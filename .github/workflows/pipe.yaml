@@ -23,13 +23,13 @@ jobs:
     - name: Login to Amazon ECR
       id: login-ecr
       run: |
-        aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 825223353827.dkr.ecr.us-east-1.amazonaws.com
+        aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 017820672128.dkr.ecr.us-east-1.amazonaws.com
 
     - name: Build and Push Docker Image
       run: |
         cd application
-        docker build -t 825223353827.dkr.ecr.us-east-1.amazonaws.com/new-comments:v1 .
-        docker push 825223353827.dkr.ecr.us-east-1.amazonaws.com/new-comments:v1
+        docker build -t 017820672128.dkr.ecr.us-east-1.amazonaws.com/new-comments:v1 .
+        docker push 017820672128.dkr.ecr.us-east-1.amazonaws.com/new-comments:v1
 
   deploy:
     runs-on: ubuntu-latest
@@ -55,28 +55,20 @@ jobs:
 
     - name: Update Kubeconfig
       run: |
-        aws eks --region us-east-1 update-kubeconfig --name duarte
+        aws eks --region us-east-1 update-kubeconfig --name devops-cluster
         chmod 600 ~/.kube/config
 
     - name: Install metrics server
       run: |
         kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml --validate=false
 
-    - name: Check if namespace exists
-      run: |
-        kubectl create namespace app || true
-        if [ $? -ne 0 ]; then
-          echo "Namespace app already exists"
-        fi
-
     - name: Deploy applications comments to EKS
       run: |
+        kubectl create namespace app
         kubectl apply -f manifests/deployment.yaml
         kubectl apply -f manifests/service.yaml
         kubectl apply -f manifests/hpa.yaml
-        kubectl apply -f manifests/deploy-nginx-ingress-controller.yaml
-        kubectl create namespace jaeger
-        kubectl create namespace otel
+        kubectl apply -f manifests/ingress.yaml
 
     - name: Install Helm
       run: |
@@ -87,13 +79,37 @@ jobs:
     - name: Add repo kube-prometheus and Update Helm Repository
       run: |
         helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm repo add grafana https://grafana.github.io/helm-charts
         helm repo update
 
-    - name: Deploy Helm Chart
+    - name: Deploy Helm Chart Prometheus and Grafana
       run: |
-        helm install prometheus prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace
+        # Instala o Prometheus Stack com configurações personalizadas
+        helm install prometheus prometheus-community/kube-prometheus-stack \
+          --namespace monitoring --create-namespace \
+          --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.storageClassName=gp2 \
+          --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=10Gi \
+          --set prometheus.prometheusSpec.resources.requests.cpu=500m \
+          --set prometheus.prometheusSpec.resources.requests.memory=1Gi \
+          --set prometheus.prometheusSpec.resources.limits.cpu=1000m \
+          --set prometheus.prometheusSpec.resources.limits.memory=2Gi \
+          --set grafana.persistence.enabled=true \
+          --set grafana.persistence.storageClassName=gp2 \
+          --set grafana.persistence.size=10Gi \
+          --set grafana.adminPassword=${{ secrets.PASSWD_GRAFANA }}
 
-    - name: Install OpenTelemetry Collector
+    - name: Deploy Grafana Dashboard
       run: |
-        kubectl apply -f https://raw.githubusercontent.com/open-telemetry/opentelemetry-collector/v0.94.0/examples/k8s/otel-config.yaml -n otel
-        
+        kubectl apply -f manifests/grafana-dashboard.yaml
+
+    - name: Deploy Prometheus/Grafana Ingress
+      run: |
+        kubectl apply -f manifests/prometheus-ingress.yaml
+    - name: Deploy ServiceMonitor
+      run: |
+        # Aguarda o CRD do ServiceMonitor estar disponível
+        kubectl wait --for=condition=established --timeout=60s crd/servicemonitors.monitoring.coreos.com
+        # Aguarda o Prometheus estar pronto
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
+        kubectl apply -f manifests/service-monitor.yaml
+

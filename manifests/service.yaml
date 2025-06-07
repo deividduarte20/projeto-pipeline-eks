@@ -3,9 +3,12 @@ kind: Service
 metadata:
   name: svc-new-comments
   namespace: app
+  labels:
+    app: comments-api
 spec:
   selector:
     app: api-new-comments
   ports:
-  - port: 80
-    targetPort: 80
+  - name: http
+    port: 8000
+    targetPort: 8000

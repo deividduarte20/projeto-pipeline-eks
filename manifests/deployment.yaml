@@ -13,22 +13,45 @@ spec:
       labels:
         app: api-new-comments
       annotations:
-          prometheus.io/scrape: "true"
-          prometheus.io/port: "80"  # ajuste conforme a porta do seu aplicativo
-          prometheus.io/path: "/metrics"  # ajuste conforme o caminho do endpoint de métricas do seu aplicativo
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
     spec:
       containers:
       - name: api-new-comments
-        image: 825223353827.dkr.ecr.us-east-1.amazonaws.com/new-comments:v1
+        image: 017820672128.dkr.ecr.us-east-1.amazonaws.com/new-comments:v1 
         ports:
         - containerPort: 8000
-        env:
-        - name: OTELCOL_SERVER
-          value: "http://otel-collector-daemonset-collector.otel-collector.svc.cluster.local:4317"
+          name: http
         resources:
           requests:
-            memory: "64Mi"
+            memory: "80Mi"
             cpu: "100m"
           limits:
             memory: "128Mi"
             cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        env:
+        - name: FLASK_APP
+          value: "api.py"
+        - name: FLASK_ENV
+          value: "production"
+        - name: PYTHONUNBUFFERED
+          value: "1"
