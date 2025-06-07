@@ -8,11 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TF_WORKING_DIR: 'terraform-eks/'
-      AWS_REGION: us-east-1
-
-    permissions:
-      id-token: write
-      contents: read
 
     defaults:
       run:
@@ -21,18 +16,17 @@ jobs:
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v4.1.1
 
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v4.0.2
       with:
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-        aws-region: ${{ env.AWS_REGION }}
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
 
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: 1.5.7
+    - name: Checkout do Código
+      uses: actions/checkout@v4.1.1
 
     - name: Inicializar Terraform
       run: terraform init
@@ -41,26 +35,4 @@ jobs:
       run: terraform fmt -recursive
 
     - name: Executar Terraform Plan
-      id: plan
-      run: |
-        terraform plan -no-color > plan.txt
-        echo "PLAN_OUTPUT<<EOF" >> $GITHUB_ENV
-        cat plan.txt >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
-
-    - name: Comentar na PR
-      uses: actions/github-script@v7
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          const output = `#### Terraform Plan 📝
-          \`\`\`hcl
-          ${process.env.PLAN_OUTPUT}
-          \`\`\`
-          `;
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: output
-          })
+      run: terraform plan
