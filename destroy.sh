@@ -47,7 +47,7 @@ remove_elastic_ips() {
     fi
 
     # Lista Elastic IPs associados à VPC
-    EIP_ALLOCATIONS=$(aws ec2 describe-addresses --filters "Name=domain,Values=vpc" --query 'Addresses[?].AllocationId' --output text)
+    EIP_ALLOCATIONS=$(aws ec2 describe-addresses --filters "Name=domain,Values=vpc" --query 'Addresses[*].AllocationId' --output text)
     
     for ALLOC_ID in $EIP_ALLOCATIONS; do
         # Desassocia o EIP primeiro
@@ -88,12 +88,12 @@ force_remove_network_resources() {
 
     # Remove NAT Gateways
     echo -e "${YELLOW}Removendo NAT Gateways...${NC}"
-    NAT_GATEWAYSS=$(aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=$VPC_ID" --query 'NatGateways[*].NatGatewayId' --output text
-    for NAT_ID in $NAT_GATEWAY; do
+    NAT_GATEWAYS=$(aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=$VPC_ID" --query 'NatGateways[*].NatGatewayId' --output text)
+    for NAT_ID in $NAT_GATEWAYS; do
         aws ec2 delete-nat-gateway --nat-gateway-id $NAT_ID
-        check_error "Falha ao remover NAT Gateway $$NAT_ID"
-        echo -e "${YELLOW}Aguardando NAT Gateway $$NAT_ID ser removido...${NC}"
-        aws ec2 wait nat-gateway-deleted --nat-gateway-ids $$NAT_ID || true
+        check_error "Falha ao remover NAT Gateway $NAT_ID"
+        echo -e "${YELLOW}Aguardando NAT Gateway $NAT_ID ser removido...${NC}"
+        aws ec2 wait nat-gateway-deleted --nat-gateway-ids $NAT_ID || true
     done
 
     # Remove Network Interfaces
@@ -109,9 +109,10 @@ force_remove_network_resources() {
     RTBS=$(aws ec2 describe-route-tables --filters "Name=vpc-id,Values=$VPC_ID" --query 'RouteTables[*].RouteTableId' --output text)
     for RTB_ID in $RTBS; do
         # Remove rotas não locais
-        ROUTES=$(aws ec2 describe-route-tables --route-table-id $RTB_ID --query 'RouteTables[0].Routes[?DestinationCidrBlock!=`172.31.0.0/16`].DestinationCidrBlock' --output text)
-        for ROUTE in $ROUTE; do
+        ROUTES=$(aws ec2 describe-route-tables --route-table-ids $RTB_ID --query 'RouteTables[0].Routes[?DestinationCidrBlock!=`172.31.0.0/16`].DestinationCidrBlock' --output text)
+        for ROUTE in $ROUTES; do
             aws ec2 delete-route --route-table-id $RTB_ID --destination-cidr-block $ROUTE
+            check_error "Falha ao remover rota $ROUTE da Route Table $RTB_ID"
         done
         aws ec2 delete-route-table --route-table-id $RTB_ID
         check_error "Falha ao remover Route Table $RTB_ID"
@@ -121,7 +122,7 @@ force_remove_network_resources() {
     echo -e "${YELLOW}Removendo Security Groups...${NC}"
     SGS=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$VPC_ID" --query 'SecurityGroups[?GroupName!=`default`].GroupId' --output text)
     for SG_ID in $SGS; do
-        aws ec2 delete-security-group --group-id $SGID
+        aws ec2 delete-security-group --group-id $SG_ID
         check_error "Falha ao remover Security Group $SG_ID"
     done
 
@@ -160,6 +161,10 @@ echo -e "${YELLOW}Removendo recursos do EKS...${NC}"
 
 cd terraform-eks || exit 1
 
+# Inicializar Terraform
+terraform init
+check_error "Falha ao inicializar Terraform"
+
 # Remover Karpenter e Node Groups
 terraform destroy -target=module.karpenter -target=module.node_group -auto-approve
 check_error "Falha ao remover Karpenter e Node Groups"
@@ -181,22 +186,22 @@ remove_elastic_ips
 # Forçar remoção de recursos de rede
 force_remove_network_resources
 
-# Remova o estado do Terraform para recursos problemáticos
+# Remover estado do Terraform para recursos problemáticos
 echo -e "${YELLOW}Removendo estado do Terraform para recursos problemáticos...${NC}"
-terraform state rm module.network.aws_internet_gateway.gw
+terraform state rm module.network.aws_internet_gateway.igw || true
 check_error "Falha ao remover estado do Internet Gateway"
-terraform state rm module.network.aws_subnet.public[0]
+terraform state rm module.network.aws_subnet.public[0] || true
 check_error "Falha ao remover estado da subnet pública 0"
-terraform state rm module.network.aws_subnet.public[1]
+terraform state rm module.network.aws_subnet.public[1] || true
 check_error "Falha ao remover estado da subnet pública 1"
-terraform state rm module.network.aws_vpc.vpc
+terraform state rm module.network.aws_vpc.vpc || true
 check_error "Falha ao remover estado da VPC"
 
 # Remover o módulo de rede
 terraform destroy -target=module.network -auto-approve
 check_error "Falha ao destruir módulo de rede"
 
-# Remover todos os recursos
+# Remover todos os recursos restantes
 echo -e "${YELLOW}Removendo todos os recursos restantes...${NC}"
 terraform destroy -auto-approve
 check_error "Falha ao destruir recursos restantes"
