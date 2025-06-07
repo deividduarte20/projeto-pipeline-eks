@@ -2,36 +2,36 @@ name: Terraform EKS Pipeline
 
 on:
   pull_request:
+    paths:
+      - 'terraform-eks/**'
 
 jobs:
   terraform-eks:
     runs-on: ubuntu-latest
     env:
-      TF_WORKING_DIR: 'terraform-eks/'
+      TF_WORKING_DIR: terraform-eks/
 
     defaults:
       run:
         shell: bash
+        working-directory: ${{ env.TF_WORKING_DIR }}
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4.1.1
+      - name: Checkout Repository
+        uses: actions/checkout@v4.1.1
 
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v4.0.2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
-        
-    - name: Checkout do Código
-      uses: actions/checkout@v4.1.1
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
-    - name: Inicializar Terraform
-      run: terraform init
+      - name: Inicializar Terraform
+        run: terraform init
 
-    - name: Formatar arquivos Terraform
-      run: terraform fmt -recursive
+      - name: Validar formatação dos arquivos
+        run: terraform fmt -check -recursive
 
-    - name: Executar Terraform Plan
-      run: terraform plan
+      - name: Executar Terraform Plan
+        run: terraform plan
