@@ -37,6 +37,11 @@ jobs:
           aws eks --region ${{ env.AWS_REGION }} update-kubeconfig --name devops-cluster
           chmod 600 ~/.kube/config
 
+      - name: Check Kubernetes API Health
+        run: |
+          kubectl cluster-info
+          kubectl get nodes --no-headers | wc -l | grep -q "[1-9]" || (echo "Erro: Cluster EKS não está acessível ou não tem nós!" && exit 1)
+
       - name: Delete Kubernetes Resources
         run: |
           # Delete application resources in the app namespace
@@ -44,20 +49,35 @@ jobs:
           kubectl delete -f manifests/hpa.yaml --ignore-not-found=true
           kubectl delete -f manifests/service.yaml --ignore-not-found=true
           kubectl delete -f manifests/deployment.yaml --ignore-not-found=true
+          kubectl delete pvc --all -n app --ignore-not-found=true
+          kubectl wait --for=delete pod --all -n app --timeout=120s || true
           kubectl delete namespace app --ignore-not-found=true
+          kubectl wait --for=delete namespace/app --timeout=120s || true
 
           # Delete monitoring resources
           kubectl delete -f manifests/service-monitor.yaml --ignore-not-found=true
           kubectl delete -f manifests/grafana-dashboard.yaml --ignore-not-found=true
           kubectl delete -f manifests/prometheus-ingress.yaml --ignore-not-found=true
-          helm uninstall prometheus -n monitoring --ignore-not-found=true
+          helm uninstall prometheus -n monitoring --wait --timeout=120s --ignore-not-found=true
+          kubectl delete pvc --all -n monitoring --ignore-not-found=true
+          kubectl wait --for=delete pod --all -n monitoring --timeout=120s || true
           kubectl delete namespace monitoring --ignore-not-found=true
+          kubectl wait --for=delete namespace/monitoring --timeout=120s || true
 
           # Delete externaldns resources
           kubectl delete all --all -n externaldns --ignore-not-found=true
           kubectl delete configmap --all -n externaldns --ignore-not-found=true
           kubectl delete secret --all -n externaldns --ignore-not-found=true
+          kubectl wait --for=delete pod --all -n externaldns --timeout=120s || true
           kubectl delete namespace externaldns --ignore-not-found=true
+          kubectl wait --for=delete namespace/externaldns --timeout=120s || true
+
+          # Remove finalizers, if any
+          for ns in app monitoring externaldns; do
+            if kubectl get namespace $ns -o jsonpath='{.metadata.finalizers}' 2>/dev/null | grep -q .; then
+              kubectl patch namespace $ns -p '{"metadata":{"finalizers":null}}' --type=merge
+            fi
+          done
 
       - name: Destroy Resources
         id: destroy
