@@ -53,6 +53,12 @@ jobs:
           helm uninstall prometheus -n monitoring --ignore-not-found=true
           kubectl delete namespace monitoring --ignore-not-found=true
 
+          # Delete externaldns resources
+          kubectl delete all --all -n externaldns --ignore-not-found=true
+          kubectl delete configmap --all -n externaldns --ignore-not-found=true
+          kubectl delete secret --all -n externaldns --ignore-not-found=true
+          kubectl delete namespace externaldns --ignore-not-found=true
+
       - name: Destroy Resources
         id: destroy
         working-directory: .
