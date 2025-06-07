@@ -1,18 +1,20 @@
 name: Terraform Destroy
 
-on: workflow_dispatch        
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to destroy (e.g., dev, prod)'
+        required: false
+        default: 'dev'
 
 jobs:
   destroy:
-    name: 'terraform destroy'
+    name: Terraform Destroy
     runs-on: ubuntu-latest
     env:
-      TF_WORKING_DIR: '/projeto-pipeline-eks'
-
-    defaults:
-      run:
-        shell: bash
-        working-directory: ${{ env.TF_WORKING_DIR }}
+      AWS_REGION: us-east-1
+      TF_WORKING_DIR: terraform-eks
 
     steps:
       - name: Checkout Repository
@@ -23,8 +25,35 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Destroy resources
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.1
+
+      - name: Update Kubeconfig
+        run: |
+          aws eks --region ${{ env.AWS_REGION }} update-kubeconfig --name devops-cluster
+          chmod 600 ~/.kube/config
+
+      - name: Delete Kubernetes Resources
+        run: |
+          # Delete application resources in the app namespace
+          kubectl delete -f manifests/ingress.yaml --ignore-not-found=true
+          kubectl delete -f manifests/hpa.yaml --ignore-not-found=true
+          kubectl delete -f manifests/service.yaml --ignore-not-found=true
+          kubectl delete -f manifests/deployment.yaml --ignore-not-found=true
+          kubectl delete namespace app --ignore-not-found=true
+
+          # Delete monitoring resources
+          kubectl delete -f manifests/service-monitor.yaml --ignore-not-found=true
+          kubectl delete -f manifests/grafana-dashboard.yaml --ignore-not-found=true
+          kubectl delete -f manifests/prometheus-ingress.yaml --ignore-not-found=true
+          helm uninstall prometheus -n monitoring --ignore-not-found=true
+          kubectl delete namespace monitoring --ignore-not-found=true
+
+      - name: Destroy Resources
         id: destroy
+        working-directory: .
         run: ./destroy.sh
