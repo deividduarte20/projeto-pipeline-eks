@@ -126,8 +126,8 @@ force_remove_externaldns() {
 remove_namespace_finalizers() {
     local namespace=$1
     
-    # Ignora o namespace default e externaldns
-    if [ "$namespace" = "default" ] || [ "$namespace" = "externaldns" ]; then
+    # Ignora o namespace default, externaldns e karpenter
+    if [ "$namespace" = "default" ] || [ "$namespace" = "externaldns" ] || [ "$namespace" = "karpenter" ]; then
         echo -e "${YELLOW}Pulando namespace $namespace...${NC}"
         return 0
     fi
@@ -202,8 +202,8 @@ wait_for_deletion() {
 remove_namespace() {
     local namespace=$1
     
-    # Ignora o namespace default e externaldns
-    if [ "$namespace" = "default" ] || [ "$namespace" = "externaldns" ]; then
+    # Ignora o namespace default, externaldns e karpenter
+    if [ "$namespace" = "default" ] || [ "$namespace" = "externaldns" ] || [ "$namespace" = "karpenter" ]; then
         echo -e "${YELLOW}Pulando namespace $namespace...${NC}"
         return 0
     fi
