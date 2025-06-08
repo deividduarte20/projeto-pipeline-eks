@@ -16,6 +16,32 @@ check_error() {
     fi
 }
 
+# Função para remover finalizers de um namespace
+remove_namespace_finalizers() {
+    local namespace=$1
+    echo -e "${YELLOW}Removendo finalizers do namespace $namespace...${NC}"
+    
+    # Verifica se o namespace existe
+    if ! kubectl get namespace $namespace &>/dev/null; then
+        echo -e "${YELLOW}Namespace $namespace não existe, pulando...${NC}"
+        return 0
+    fi
+
+    # 1. Obter o nome do namespace em formato JSON
+    kubectl get namespace $namespace -o json > ${namespace}.json
+
+    # 2. Editar o arquivo para remover os finalizers
+    sed -i 's/"finalizers": \[[^]]\+\]/"finalizers": []/' ${namespace}.json
+
+    # 3. Aplicar o arquivo modificado
+    kubectl replace --raw "/api/v1/namespaces/${namespace}/finalize" -f ${namespace}.json
+
+    # 4. Remover o arquivo temporário
+    rm ${namespace}.json
+
+    echo -e "${GREEN}Finalizers do namespace $namespace removidos com sucesso${NC}"
+}
+
 # Função para esperar recursos serem removidos
 wait_for_deletion() {
     local resource_type=$1
@@ -62,6 +88,9 @@ remove_namespace() {
     kubectl delete pvc --all -n $namespace 2>/dev/null || true
     kubectl delete servicemonitor --all -n $namespace 2>/dev/null || true
     
+    # Remove os finalizers antes de tentar remover o namespace
+    remove_namespace_finalizers $namespace
+    
     # Tenta remover o namespace
     echo -e "${YELLOW}Tentando remover namespace $namespace...${NC}"
     kubectl delete namespace $namespace
@@ -75,7 +104,7 @@ remove_namespace() {
         if [ $elapsed -gt $timeout ]; then
             echo -e "${RED}Timeout ao remover namespace $namespace${NC}"
             echo -e "${YELLOW}Tentando forçar remoção...${NC}"
-            kubectl patch namespace $namespace -p '{"metadata":{"finalizers":[]}}' --type=merge
+            remove_namespace_finalizers $namespace
             kubectl delete namespace $namespace --force --grace-period=0
             return 1
         fi
@@ -180,23 +209,6 @@ force_remove_network_resources() {
     fi
 }
 
-# Função para forçar a remoção do namespace externaldns
-force_remove_externaldns() {
-    echo -e "${YELLOW}Forçando remoção do namespace externaldns...${NC}"
-    
-    # 1. Obter o nome do namespace em formato JSON
-    kubectl get namespace externaldns -o json > externaldns.json
-
-    # 2. Editar o arquivo para remover os finalizers
-    sed -i 's/"finalizers": \[[^]]\+\]/"finalizers": []/' externaldns.json
-
-    # 3. Aplicar o arquivo modificado
-    kubectl replace --raw "/api/v1/namespaces/externaldns/finalize" -f externaldns.json
-
-    # 4. Remover o arquivo temporário
-    rm externaldns.json
-}
-
 # 1. Remover recursos do Kubernetes
 echo -e "${YELLOW}Removendo recursos do Kubernetes...${NC}"
 
@@ -205,9 +217,12 @@ if ! kubectl cluster-info &>/dev/null; then
     echo -e "${RED}Erro: kubectl não está configurado ou não consegue acessar o cluster${NC}"
     echo -e "${YELLOW}Pulando remoção de recursos do Kubernetes...${NC}"
 else
-    # Forçar remoção do namespace externaldns primeiro
-    force_remove_externaldns
-    
+    # Remover finalizers de todos os namespaces antes de começar
+    echo -e "${YELLOW}Removendo finalizers de todos os namespaces...${NC}"
+    for namespace in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'); do
+        remove_namespace_finalizers $namespace
+    done
+
     # Remover recursos do namespace monitoring
     remove_namespace "monitoring"
 
