@@ -78,13 +78,13 @@ jobs:
           kubectl delete namespace monitoring --ignore-not-found=true || true
           kubectl wait --for=delete namespace/monitoring --timeout=120s || true
 
-          # Delete externaldns resources
-          kubectl delete all --all -n externaldns --ignore-not-found=true || true
-          kubectl delete configmap --all -n externaldns --ignore-not-found=true || true
-          kubectl delete secret --all -n externaldns --ignore-not-found=true || true
-          kubectl wait --for=delete pod --all -n externaldns --timeout=120s || true
-          kubectl delete namespace externaldns --ignore-not-found=true || true
-          kubectl wait --for=delete namespace/externaldns --timeout=120s || true
+          # # Delete externaldns resources
+          # kubectl delete all --all -n externaldns --ignore-not-found=true || true
+          # kubectl delete configmap --all -n externaldns --ignore-not-found=true || true
+          # kubectl delete secret --all -n externaldns --ignore-not-found=true || true
+          # kubectl wait --for=delete pod --all -n externaldns --timeout=120s || true
+          # kubectl delete namespace externaldns --ignore-not-found=true || true
+          # kubectl wait --for=delete namespace/externaldns --timeout=120s || true
 
           # Remove finalizers, if any
           for ns in app monitoring externaldns; do
