@@ -13,6 +13,6 @@ spec:
     matchNames:
       - app
   endpoints:
-    - port: metrics
+    - port: http
       interval: 15s
       path: /metrics 
