@@ -16,6 +16,48 @@ check_error() {
     fi
 }
 
+# Função para forçar a remoção de recursos pendentes
+force_remove_pending_resources() {
+    local namespace=$1
+    echo -e "${YELLOW}Forçando remoção de recursos pendentes no namespace $namespace...${NC}"
+    
+    # Remove pods em estado Pending
+    kubectl get pods -n $namespace -o name | grep -v "No resources found" | while read -r pod; do
+        echo -e "${YELLOW}Removendo pod $pod...${NC}"
+        kubectl delete $pod -n $namespace --force --grace-period=0
+    done
+
+    # Remove deployments
+    kubectl get deployments -n $namespace -o name | grep -v "No resources found" | while read -r deployment; do
+        echo -e "${YELLOW}Removendo deployment $deployment...${NC}"
+        kubectl delete $deployment -n $namespace --force --grace-period=0
+    done
+
+    # Remove daemonsets
+    kubectl get daemonsets -n $namespace -o name | grep -v "No resources found" | while read -r daemonset; do
+        echo -e "${YELLOW}Removendo daemonset $daemonset...${NC}"
+        kubectl delete $daemonset -n $namespace --force --grace-period=0
+    done
+
+    # Remove services
+    kubectl get services -n $namespace -o name | grep -v "No resources found" | while read -r service; do
+        echo -e "${YELLOW}Removendo service $service...${NC}"
+        kubectl delete $service -n $namespace --force --grace-period=0
+    done
+
+    # Remove PVCs
+    kubectl get pvc -n $namespace -o name | grep -v "No resources found" | while read -r pvc; do
+        echo -e "${YELLOW}Removendo PVC $pvc...${NC}"
+        kubectl delete $pvc -n $namespace --force --grace-period=0
+    done
+
+    # Remove CRDs específicos que podem estar causando problemas
+    kubectl get crd | grep -E 'externaldns|karpenter|prometheus|grafana' | awk '{print $1}' | while read -r crd; do
+        echo -e "${YELLOW}Removendo CRD $crd...${NC}"
+        kubectl delete crd $crd --force --grace-period=0
+    done
+}
+
 # Função para remover finalizers de um namespace
 remove_namespace_finalizers() {
     local namespace=$1
@@ -26,6 +68,9 @@ remove_namespace_finalizers() {
         echo -e "${YELLOW}Namespace $namespace não existe, pulando...${NC}"
         return 0
     fi
+
+    # Força remoção de recursos pendentes primeiro
+    force_remove_pending_resources $namespace
 
     # 1. Obter o nome do namespace em formato JSON
     kubectl get namespace $namespace -o json > ${namespace}.json
@@ -38,6 +83,9 @@ remove_namespace_finalizers() {
 
     # 4. Remover o arquivo temporário
     rm ${namespace}.json
+
+    # 5. Forçar remoção do namespace
+    kubectl delete namespace $namespace --force --grace-period=0
 
     echo -e "${GREEN}Finalizers do namespace $namespace removidos com sucesso${NC}"
 }
