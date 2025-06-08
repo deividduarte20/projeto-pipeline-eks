@@ -58,6 +58,70 @@ force_remove_pending_resources() {
     done
 }
 
+# Função para forçar a remoção do namespace externaldns
+force_remove_externaldns() {
+    echo -e "${YELLOW}Forçando remoção do namespace externaldns...${NC}"
+    
+    # 1. Remover todos os recursos
+    kubectl delete all --all -n externaldns --force --grace-period=0 2>/dev/null || true
+    kubectl delete pvc --all -n externaldns --force --grace-period=0 2>/dev/null || true
+    kubectl delete servicemonitor --all -n externaldns --force --grace-period=0 2>/dev/null || true
+    
+    # 2. Remover CRDs relacionados ao externaldns
+    kubectl get crd | grep -E 'externaldns' | awk '{print $1}' | while read -r crd; do
+        kubectl delete crd $crd --force --grace-period=0
+    done
+    
+    # 3. Tentar remover via API diretamente
+    echo -e "${YELLOW}Tentando remover namespace externaldns via API...${NC}"
+    
+    # Obter o token de autenticação
+    TOKEN=$(kubectl get secret -n kube-system $(kubectl get serviceaccount -n kube-system default -o jsonpath='{.secrets[0].name}') -o jsonpath='{.data.token}' | base64 --decode)
+    
+    # Obter o endpoint da API
+    API_ENDPOINT=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+    
+    # Remover o namespace via API
+    curl -k -X DELETE \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "Content-Type: application/json" \
+        "$API_ENDPOINT/api/v1/namespaces/externaldns" \
+        -d '{"kind":"DeleteOptions","apiVersion":"v1","propagationPolicy":"Background"}' || true
+    
+    # 4. Se ainda existir, tentar remover finalizers via API
+    if kubectl get namespace externaldns &>/dev/null; then
+        echo -e "${YELLOW}Tentando remover finalizers via API...${NC}"
+        
+        # Obter o namespace em JSON
+        kubectl get namespace externaldns -o json > externaldns.json
+        
+        # Remover finalizers
+        sed -i 's/"finalizers": \[[^]]\+\]/"finalizers": []/' externaldns.json
+        
+        # Aplicar via API
+        curl -k -X PUT \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            "$API_ENDPOINT/api/v1/namespaces/externaldns/finalize" \
+            -d @externaldns.json || true
+        
+        rm externaldns.json
+    fi
+    
+    # 5. Forçar remoção do namespace
+    kubectl delete namespace externaldns --force --grace-period=0
+    
+    # 6. Aguardar um pouco
+    sleep 5
+    
+    # 7. Se ainda existir, tentar uma última vez
+    if kubectl get namespace externaldns &>/dev/null; then
+        echo -e "${YELLOW}Tentando última remoção forçada...${NC}"
+        kubectl patch namespace externaldns -p '{"metadata":{"finalizers":[]}}' --type=merge
+        kubectl delete namespace externaldns --force --grace-period=0
+    fi
+}
+
 # Função para remover finalizers de um namespace
 remove_namespace_finalizers() {
     local namespace=$1
@@ -65,6 +129,12 @@ remove_namespace_finalizers() {
     # Ignora o namespace default
     if [ "$namespace" = "default" ]; then
         echo -e "${YELLOW}Pulando namespace default...${NC}"
+        return 0
+    fi
+    
+    # Tratamento especial para o namespace externaldns
+    if [ "$namespace" = "externaldns" ]; then
+        force_remove_externaldns
         return 0
     fi
     
@@ -289,6 +359,9 @@ if ! kubectl cluster-info &>/dev/null; then
     echo -e "${RED}Erro: kubectl não está configurado ou não consegue acessar o cluster${NC}"
     echo -e "${YELLOW}Pulando remoção de recursos do Kubernetes...${NC}"
 else
+    # Remover o namespace externaldns primeiro
+    force_remove_externaldns
+    
     # Remover finalizers de todos os namespaces antes de começar
     echo -e "${YELLOW}Removendo finalizers de todos os namespaces...${NC}"
     for namespace in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'); do
