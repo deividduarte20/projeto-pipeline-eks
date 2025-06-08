@@ -126,8 +126,13 @@ force_remove_externaldns() {
 remove_namespace_finalizers() {
     local namespace=$1
     
-    # Ignora o namespace default, externaldns e karpenter
-    if [ "$namespace" = "default" ] || [ "$namespace" = "externaldns" ] || [ "$namespace" = "karpenter" ]; then
+    # Ignora namespaces do sistema e gerenciados pelo Terraform
+    if [ "$namespace" = "default" ] || \
+       [ "$namespace" = "externaldns" ] || \
+       [ "$namespace" = "karpenter" ] || \
+       [ "$namespace" = "kube-node-lease" ] || \
+       [ "$namespace" = "kube-system" ] || \
+       [ "$namespace" = "kube-public" ]; then
         echo -e "${YELLOW}Pulando namespace $namespace...${NC}"
         return 0
     fi
@@ -202,8 +207,13 @@ wait_for_deletion() {
 remove_namespace() {
     local namespace=$1
     
-    # Ignora o namespace default, externaldns e karpenter
-    if [ "$namespace" = "default" ] || [ "$namespace" = "externaldns" ] || [ "$namespace" = "karpenter" ]; then
+    # Ignora namespaces do sistema e gerenciados pelo Terraform
+    if [ "$namespace" = "default" ] || \
+       [ "$namespace" = "externaldns" ] || \
+       [ "$namespace" = "karpenter" ] || \
+       [ "$namespace" = "kube-node-lease" ] || \
+       [ "$namespace" = "kube-system" ] || \
+       [ "$namespace" = "kube-public" ]; then
         echo -e "${YELLOW}Pulando namespace $namespace...${NC}"
         return 0
     fi
