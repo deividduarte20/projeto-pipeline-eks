@@ -1,49 +1,102 @@
-# Bem vindo ao projeto
+# Pipeline de Automação EKS
 
-### Este projeto implementa uma pipeline para automatizar a criação, implantação e o monitoramento de aplicação em um cluster Amazon EKS. A pipeline utiliza ferramentas como helm, kube-prometheus e Grafana para fornecer um ambiente completo e gerenciável.
+## Visão Geral
+Este projeto implementa uma pipeline completa para automatizar a criação, implantação e monitoramento de aplicações em um cluster Amazon EKS (Elastic Kubernetes Service). A solução utiliza um conjunto robusto de ferramentas modernas para fornecer um ambiente de produção completo, escalável e facilmente gerenciável.
 
-![Alt text here](diagrama/projeto-eks.drawio.svg)
+### Arquitetura
+A arquitetura do projeto inclui:
+- Cluster EKS gerenciado
+- AWS Load Balancer Controller para gerenciamento de ingress
+- Karpenter para auto-scaling
+- ExternalDNS para gerenciamento de DNS
+- Prometheus e Grafana para monitoramento
+- Helm para gerenciamento de pacotes Kubernetes
+
+![Diagrama da Arquitetura](diagrama/projeto-eks.drawio.svg)
+
+## Componentes Principais
+
+### 1. Infraestrutura como Código (IaC)
+- Terraform para provisionamento da infraestrutura
+- Gerenciamento de estado remoto via S3
+- Configuração automatizada de recursos AWS
+
+### 2. Container Registry
+- AWS ECR para armazenamento de imagens Docker
+- Pipeline automatizada para build e push de imagens
+
+### 3. Cluster EKS
+- Provisionamento automatizado do cluster
+- Configuração de networking e segurança
+- Integração com serviços AWS
+
+### 4. Monitoramento e Observabilidade
+- Prometheus para coleta de métricas
+- Grafana para visualização e dashboards
+- Alertas configuráveis
+- Métricas customizadas da aplicação
 
 ## Pré-requisitos
 
-* Conta AWS com acesso à CLI da AWS.
-* Bucket para utilização de armazenamento do terraform state.
-* Repo do ECR criado
-* Route53 com zona hosteada
+### Requisitos Técnicos
+* Conta AWS com acesso à CLI da AWS
+* Bucket S3 para armazenamento do terraform state
+* Repositório ECR criado
+* Zona hospedada no Route53
 
-## Passos da Pipeline
+### Permissões AWS Necessárias
+* Permissões para criar e gerenciar recursos EKS
+* Acesso ao ECR
+* Permissões para gerenciar Route53
+* Permissões para criar e gerenciar Load Balancers
 
-### 3. Criação do Cluster EKS
+## Pipeline de Implantação
 
-* Executa o build e push da imagem para o repositório no AWS ECR
-* Executa o terraform provisionando eks + AWS load balancer controller + Karpenter + Externaldns
-* Atualiza o kube-config
-* Instala o metrics-server
-* Deploy da aplicação python no namespace app
-* Instala helm
-* Instala kube-prometheus no namespace monitoring
+### 1. Build e Deploy
+* Build automatizado da imagem Docker
+* Push para o repositório ECR
+* Deploy da aplicação no namespace `app`
 
-### 4. Monitoramento
+### 2. Infraestrutura
+* Provisionamento do cluster EKS
+* Instalação do AWS Load Balancer Controller
+* Configuração do Karpenter para auto-scaling
+* Setup do ExternalDNS
+* Atualização automática do kube-config
 
-* O Prometheus coleta métricas do cluster EKS.
-* O Grafana visualiza as métricas coletadas pelo Prometheus.
+### 3. Monitoramento
+* Instalação do metrics-server
+* Deploy do kube-prometheus via Helm
+* Configuração do Grafana
+* Setup de dashboards e alertas
 
-### 5. Rotas da API
+## Aplicação
 
-**Health:** `/` </br>
-**Métricas:** `/metrics`</br>
-**Swagger:** `/apidocs` </br>
+### Endpoints Disponíveis
+* **Health Check:** `/` - Verifica o status da aplicação
+* **Métricas:** `/metrics` - Endpoint Prometheus para coleta de métricas
+* **Documentação API:** `/apidocs` - Interface Swagger com documentação da API
 
-### Aqui estão alguns exemplos visuais do projeto:
+## Visualizações
 
-#### Grafana
-![Grafana](diagrama/grafana1.png)
+### Grafana Dashboard
+![Dashboard Grafana](diagrama/grafana1.png)
 
-#### Métricas
-![Metricas](diagrama/metrics.png)
+### Métricas da Aplicação
+![Métricas](diagrama/metrics.png)
 
-#### Swagger
-![Swagger](diagrama/swagger.png)
+### Documentação Swagger
+![Swagger UI](diagrama/swagger.png)
 
-#### Prometheus
-![Swagger-get](diagrama/prometheus.png).
+### Prometheus
+![Prometheus](diagrama/prometheus.png)
+
+## Contribuição
+Para contribuir com o projeto:
+1. Faça um fork do repositório
+2. Crie uma branch para sua feature
+3. Faça commit das suas alterações
+4. Envie um pull request
+
+## Suporte
+Para suporte ou dúvidas, abra uma issue no repositório do projeto.
