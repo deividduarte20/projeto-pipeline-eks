@@ -355,6 +355,20 @@ force_remove_network_resources() {
     fi
 }
 
+# Função para forçar a remoção do lock do Terraform
+force_remove_terraform_lock() {
+    echo -e "${YELLOW}Forçando remoção do lock do Terraform...${NC}"
+    
+    # Obtém o ID do lock do erro
+    LOCK_ID="15ec77d9-3167-d404-81e6-3947a61eaea2"
+    
+    # Força a remoção do lock
+    terraform force-unlock -force $LOCK_ID || {
+        echo -e "${YELLOW}Tentando remover lock com --lock=false...${NC}"
+        terraform destroy -target=module.karpenter -target=module.node_group -auto-approve -lock=false || true
+    }
+}
+
 # 1. Remover recursos do Kubernetes
 echo -e "${YELLOW}Removendo recursos do Kubernetes...${NC}"
 
@@ -410,23 +424,26 @@ terraform init || {
     exit 1
 }
 
+# Forçar remoção do lock antes de começar
+force_remove_terraform_lock
+
 # Remover Karpenter e Node Groups primeiro
 echo -e "${YELLOW}Removendo Karpenter e Node Groups...${NC}"
-terraform destroy -target=module.karpenter -target=module.node_group -auto-approve || {
+terraform destroy -target=module.karpenter -target=module.node_group -auto-approve -lock=false || {
     echo -e "${RED}Falha ao remover Karpenter e Node Groups${NC}"
     exit 1
 }
 
 # Remover Load Balancer Controller e outros componentes
 echo -e "${YELLOW}Removendo Load Balancer Controller e outros componentes...${NC}"
-terraform destroy -target=module.aws-load-balancer-controller -target=module.ebs_csi_driver -auto-approve || {
+terraform destroy -target=module.aws-load-balancer-controller -target=module.ebs_csi_driver -auto-approve -lock=false || {
     echo -e "${RED}Falha ao remover Load Balancer Controller e outros componentes${NC}"
     exit 1
 }
 
 # Remover o cluster EKS
 echo -e "${YELLOW}Removendo o cluster EKS...${NC}"
-terraform destroy -target=module.cluster_eks -auto-approve || {
+terraform destroy -target=module.cluster_eks -auto-approve -lock=false || {
     echo -e "${RED}Falha ao remover o cluster EKS${NC}"
     exit 1
 }
