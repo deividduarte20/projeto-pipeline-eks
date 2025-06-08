@@ -126,15 +126,9 @@ force_remove_externaldns() {
 remove_namespace_finalizers() {
     local namespace=$1
     
-    # Ignora o namespace default
-    if [ "$namespace" = "default" ]; then
-        echo -e "${YELLOW}Pulando namespace default...${NC}"
-        return 0
-    fi
-    
-    # Tratamento especial para o namespace externaldns
-    if [ "$namespace" = "externaldns" ]; then
-        force_remove_externaldns
+    # Ignora o namespace default e externaldns
+    if [ "$namespace" = "default" ] || [ "$namespace" = "externaldns" ]; then
+        echo -e "${YELLOW}Pulando namespace $namespace...${NC}"
         return 0
     fi
     
@@ -208,9 +202,9 @@ wait_for_deletion() {
 remove_namespace() {
     local namespace=$1
     
-    # Ignora o namespace default
-    if [ "$namespace" = "default" ]; then
-        echo -e "${YELLOW}Pulando namespace default...${NC}"
+    # Ignora o namespace default e externaldns
+    if [ "$namespace" = "default" ] || [ "$namespace" = "externaldns" ]; then
+        echo -e "${YELLOW}Pulando namespace $namespace...${NC}"
         return 0
     fi
     
@@ -359,9 +353,6 @@ if ! kubectl cluster-info &>/dev/null; then
     echo -e "${RED}Erro: kubectl não está configurado ou não consegue acessar o cluster${NC}"
     echo -e "${YELLOW}Pulando remoção de recursos do Kubernetes...${NC}"
 else
-    # Remover o namespace externaldns primeiro
-    force_remove_externaldns
-    
     # Remover finalizers de todos os namespaces antes de começar
     echo -e "${YELLOW}Removendo finalizers de todos os namespaces...${NC}"
     for namespace in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'); do
