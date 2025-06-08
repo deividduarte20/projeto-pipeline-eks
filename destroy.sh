@@ -61,6 +61,13 @@ force_remove_pending_resources() {
 # Função para remover finalizers de um namespace
 remove_namespace_finalizers() {
     local namespace=$1
+    
+    # Ignora o namespace default
+    if [ "$namespace" = "default" ]; then
+        echo -e "${YELLOW}Pulando namespace default...${NC}"
+        return 0
+    fi
+    
     echo -e "${YELLOW}Removendo finalizers do namespace $namespace...${NC}"
     
     # Verifica se o namespace existe
@@ -86,6 +93,16 @@ remove_namespace_finalizers() {
 
     # 5. Forçar remoção do namespace
     kubectl delete namespace $namespace --force --grace-period=0
+
+    # 6. Aguardar um pouco para garantir que o namespace foi removido
+    sleep 5
+
+    # 7. Verificar se o namespace ainda existe e tentar remover novamente se necessário
+    if kubectl get namespace $namespace &>/dev/null; then
+        echo -e "${YELLOW}Namespace $namespace ainda existe, tentando remover novamente...${NC}"
+        kubectl patch namespace $namespace -p '{"metadata":{"finalizers":[]}}' --type=merge
+        kubectl delete namespace $namespace --force --grace-period=0
+    fi
 
     echo -e "${GREEN}Finalizers do namespace $namespace removidos com sucesso${NC}"
 }
@@ -120,6 +137,13 @@ wait_for_deletion() {
 # Função para remover namespace com timeout
 remove_namespace() {
     local namespace=$1
+    
+    # Ignora o namespace default
+    if [ "$namespace" = "default" ]; then
+        echo -e "${YELLOW}Pulando namespace default...${NC}"
+        return 0
+    fi
+    
     local timeout=300  # 5 minutos de timeout
     
     # Verifica se o namespace existe
