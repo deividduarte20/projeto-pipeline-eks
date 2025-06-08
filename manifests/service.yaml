@@ -4,7 +4,7 @@ metadata:
   name: svc-new-comments
   namespace: app
   labels:
-    app: comments-api
+    app: api-new-comments
 spec:
   selector:
     app: api-new-comments

@@ -142,5 +142,5 @@ jobs:
         kubectl wait --for=condition=established --timeout=60s crd/servicemonitors.monitoring.coreos.com || true
         # Aguarda o Prometheus estar pronto
         kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s || true
-        kubectl apply -f manifests/service-monitor.yaml --force
+        kubectl apply -f manifests/servicemonitor.yaml --force
 
