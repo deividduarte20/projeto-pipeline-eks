@@ -355,18 +355,16 @@ force_remove_network_resources() {
     fi
 }
 
-# Função para forçar a remoção do lock do Terraform
-force_remove_terraform_lock() {
-    echo -e "${YELLOW}Forçando remoção do lock do Terraform...${NC}"
+# Função para forçar a remoção do módulo externaldns
+force_remove_externaldns_module() {
+    echo -e "${YELLOW}Forçando remoção do módulo externaldns...${NC}"
     
-    # Obtém o ID do lock do erro
-    LOCK_ID="15ec77d9-3167-d404-81e6-3947a61eaea2"
+    # Remover o estado do módulo externaldns
+    terraform state rm module.externaldns.kubernetes_namespace.externaldns || true
+    terraform state rm module.externaldns.helm_release.externaldns || true
     
-    # Força a remoção do lock
-    terraform force-unlock -force $LOCK_ID || {
-        echo -e "${YELLOW}Tentando remover lock com --lock=false...${NC}"
-        terraform destroy -target=module.karpenter -target=module.node_group -auto-approve -lock=false || true
-    }
+    # Tentar remover o módulo com timeout aumentado
+    terraform destroy -target=module.externaldns -auto-approve -lock=false -parallelism=1 || true
 }
 
 # 1. Remover recursos do Kubernetes
@@ -424,26 +422,26 @@ terraform init || {
     exit 1
 }
 
-# Forçar remoção do lock antes de começar
-force_remove_terraform_lock
+# Remover o módulo externaldns primeiro
+force_remove_externaldns_module
 
-# Remover Karpenter e Node Groups primeiro
+# Remover Karpenter e Node Groups
 echo -e "${YELLOW}Removendo Karpenter e Node Groups...${NC}"
-terraform destroy -target=module.karpenter -target=module.node_group -auto-approve -lock=false || {
+terraform destroy -target=module.karpenter -target=module.node_group -auto-approve -lock=false -parallelism=1 || {
     echo -e "${RED}Falha ao remover Karpenter e Node Groups${NC}"
     exit 1
 }
 
 # Remover Load Balancer Controller e outros componentes
 echo -e "${YELLOW}Removendo Load Balancer Controller e outros componentes...${NC}"
-terraform destroy -target=module.aws-load-balancer-controller -target=module.ebs_csi_driver -auto-approve -lock=false || {
+terraform destroy -target=module.aws-load-balancer-controller -target=module.ebs_csi_driver -auto-approve -lock=false -parallelism=1 || {
     echo -e "${RED}Falha ao remover Load Balancer Controller e outros componentes${NC}"
     exit 1
 }
 
 # Remover o cluster EKS
 echo -e "${YELLOW}Removendo o cluster EKS...${NC}"
-terraform destroy -target=module.cluster_eks -auto-approve -lock=false || {
+terraform destroy -target=module.cluster_eks -auto-approve -lock=false -parallelism=1 || {
     echo -e "${RED}Falha ao remover o cluster EKS${NC}"
     exit 1
 }
