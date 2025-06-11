@@ -100,3 +100,4 @@ Para contribuir com o projeto:
 
 ## Suporte
 Para suporte ou dúvidas, abra uma issue no repositório do projeto.
+
