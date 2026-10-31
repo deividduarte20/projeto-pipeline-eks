@@ -1,17 +1,16 @@
 from flask import Flask, jsonify, request, Response
 from flask_restful import Api, Resource
-from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST, CollectorRegistry
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 from flasgger import Swagger
 import logging
 import sys
 import time
-import platform
 import psutil
 import threading
 
 # Configuração de logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout)
@@ -27,7 +26,7 @@ comments = {}
 # Métricas de Requisições
 REQUESTS = Counter('http_requests_total', 'Total number of requests received', ['method', 'endpoint', 'status'])
 LATENCY = Histogram('http_request_latency_seconds', 'HTTP request latency in seconds', ['method', 'endpoint'])
-COMMENT_COUNTER = Counter('comments_total', 'Total number of comments', ['operation', 'content_id'])
+COMMENT_COUNTER = Counter('comments_total', 'Total number of comments', ['operation'])
 ERROR_COUNTER = Counter('http_errors_total', 'Total number of errors', ['method', 'endpoint', 'error_type'])
 
 # Métricas de Sistema
@@ -37,7 +36,6 @@ DISK_USAGE = Gauge('disk_usage_percent', 'Disk usage in percent')
 UPTIME = Gauge('application_uptime_seconds', 'Application uptime in seconds')
 
 # Métricas de Tráfego
-REQUESTS_PER_SECOND = Gauge('requests_per_second', 'Number of requests per second')
 ACTIVE_REQUESTS = Gauge('active_requests', 'Number of active requests')
 RESPONSE_SIZE = Histogram('response_size_bytes', 'Size of HTTP responses in bytes', ['method', 'endpoint'])
 
@@ -70,6 +68,8 @@ def update_system_metrics():
             time.sleep(5)  # Atualiza a cada 5 segundos
         except Exception as e:
             logger.error(f"Erro ao atualizar métricas do sistema: {str(e)}")
+
+app.start_time = time.time()
 
 # Inicia thread para atualização de métricas do sistema
 metrics_thread = threading.Thread(target=update_system_metrics, daemon=True)
@@ -107,7 +107,7 @@ def health_check():
         }), 500
 
 class Comment(Resource):
-    @LATENCY.time()
+    @LATENCY.labels(method='POST', endpoint='/api/comment/new').time()
     def post(self):
         """
         Endpoint para criar um novo comentário.
@@ -134,16 +134,39 @@ class Comment(Resource):
         """
         ACTIVE_REQUESTS.inc()
         try:
-            request_data = request.get_json()
-            email = request_data['email']
-            comment = request_data['comment']
+            request_data = request.get_json(silent=True)
+            if not isinstance(request_data, dict):
+                REQUESTS.labels(method='POST', endpoint='/api/comment/new', status='400').inc()
+                ERROR_COUNTER.labels(method='POST', endpoint='/api/comment/new', error_type='ValidationError').inc()
+                ACTIVE_REQUESTS.dec()
+                return {'status': 'ERROR', 'message': 'request body must be a JSON object'}, 400
+
+            missing_fields = [
+                field for field in ('email', 'comment', 'content_id')
+                if request_data.get(field) in (None, '')
+            ]
+            if missing_fields:
+                message = f"missing required fields: {', '.join(missing_fields)}"
+                REQUESTS.labels(method='POST', endpoint='/api/comment/new', status='400').inc()
+                ERROR_COUNTER.labels(method='POST', endpoint='/api/comment/new', error_type='ValidationError').inc()
+                ACTIVE_REQUESTS.dec()
+                return {'status': 'ERROR', 'message': message}, 400
+
+            email = str(request_data['email'])
+            comment = str(request_data['comment'])
             content_id = str(request_data['content_id'])
+
+            if len(email) > 320 or len(comment) > 10000 or len(content_id) > 128:
+                REQUESTS.labels(method='POST', endpoint='/api/comment/new', status='400').inc()
+                ERROR_COUNTER.labels(method='POST', endpoint='/api/comment/new', error_type='ValidationError').inc()
+                ACTIVE_REQUESTS.dec()
+                return {'status': 'ERROR', 'message': 'input exceeds maximum allowed length'}, 400
+
             new_comment = {'email': email, 'comment': comment}
             comments.setdefault(content_id, []).append(new_comment)
             
             REQUESTS.labels(method='POST', endpoint='/api/comment/new', status='200').inc()
-            COMMENT_COUNTER.labels(operation='create', content_id=content_id).inc()
-            REQUESTS_PER_SECOND.inc()
+            COMMENT_COUNTER.labels(operation='create').inc()
             
             response = jsonify({'status': 'SUCCESS', 'message': f'comment created and associated with content_id {content_id}'})
             RESPONSE_SIZE.labels(method='POST', endpoint='/api/comment/new').observe(len(response.get_data()))
@@ -154,9 +177,9 @@ class Comment(Resource):
             REQUESTS.labels(method='POST', endpoint='/api/comment/new', status='500').inc()
             ERROR_COUNTER.labels(method='POST', endpoint='/api/comment/new', error_type=type(e).__name__).inc()
             ACTIVE_REQUESTS.dec()
-            return jsonify({'status': 'ERROR', 'message': str(e)}), 500
+            return {'status': 'ERROR', 'message': str(e)}, 500
 
-    @LATENCY.time()
+    @LATENCY.labels(method='GET', endpoint='/api/comment/list').time()
     def get(self, content_id):
         """
         Endpoint para listar comentários associados a um ID de conteúdo.
@@ -187,13 +210,13 @@ class Comment(Resource):
                 REQUESTS.labels(method='GET', endpoint='/api/comment/list', status='404').inc()
                 ERROR_COUNTER.labels(method='GET', endpoint='/api/comment/list', error_type='NotFound').inc()
                 ACTIVE_REQUESTS.dec()
-                return jsonify({'status': 'NOT-FOUND', 'message': message}), 404
+                return {'status': 'NOT-FOUND', 'message': message}, 404
         except Exception as e:
             logger.error(f"Erro ao listar comentários: {str(e)}")
             REQUESTS.labels(method='GET', endpoint='/api/comment/list', status='500').inc()
             ERROR_COUNTER.labels(method='GET', endpoint='/api/comment/list', error_type=type(e).__name__).inc()
             ACTIVE_REQUESTS.dec()
-            return jsonify({'status': 'ERROR', 'message': str(e)}), 500
+            return {'status': 'ERROR', 'message': str(e)}, 500
 
 # Adiciona recursos à API
 api.add_resource(Comment, '/api/comment/new', '/api/comment/list/<content_id>')
@@ -226,9 +249,6 @@ def metrics():
         REQUESTS.labels(method='GET', endpoint='/metrics', status='500').inc()
         ERROR_COUNTER.labels(method='GET', endpoint='/metrics', error_type=type(e).__name__).inc()
         return jsonify({'status': 'ERROR', 'message': str(e)}), 500
-
-# Uptime
-app.start_time = time.time()
 
 if __name__ == '__main__':
     logger.info("Starting application...")

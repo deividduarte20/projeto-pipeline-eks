@@ -14,13 +14,16 @@ locals {
   subnet_indices_for_nat  = range(local.count_available_subnets)
   nat_gateway_name        = "natgw-${local.project_name}"
   nat-eip                 = "eip-${local.project_name}"
-  aws_region              = "us-east-1"
+  domain                  = "dtechdevops.shop"
 
 
   network_acl = {
-    100 = { protocol = "tcp", action = "allow", cidr_blocks = "0.0.0.0/0", from_port = 22, to_port = 22 }
+    100 = { protocol = "tcp", action = "allow", cidr_blocks = local.cidr_vpc, from_port = 22, to_port = 22 }
     105 = { protocol = "tcp", action = "allow", cidr_blocks = "0.0.0.0/0", from_port = 80, to_port = 80 }
     110 = { protocol = "tcp", action = "allow", cidr_blocks = "0.0.0.0/0", from_port = 443, to_port = 443 }
+    115 = { protocol = "udp", action = "allow", cidr_blocks = local.cidr_vpc, from_port = 53, to_port = 53 }
+    120 = { protocol = "tcp", action = "allow", cidr_blocks = local.cidr_vpc, from_port = 53, to_port = 53 }
+    125 = { protocol = "icmp", action = "allow", cidr_blocks = local.cidr_vpc, from_port = -1, to_port = -1 }
     150 = { protocol = "tcp", action = "allow", cidr_blocks = "0.0.0.0/0", from_port = 1024, to_port = 65535 }
   }
 

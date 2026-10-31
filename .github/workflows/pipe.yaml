@@ -1,19 +1,31 @@
-name: Build and Push to ECR
+name: Build, Deploy and Smoke Test
 
 on:
   push:
     branches:
       - main
 
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: new-comments
+  EKS_CLUSTER_NAME: devops-cluster
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    env:
-      AWS_REGION: us-east-1
+    outputs:
+      image_uri: ${{ steps.image.outputs.uri }}
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v4.1.1
+      uses: actions/checkout@v4
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -24,28 +36,35 @@ jobs:
 
     - name: Login to Amazon ECR
       id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Set immutable image URI
+      id: image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
-        aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 017820672128.dkr.ecr.us-east-1.amazonaws.com
+        echo "uri=${ECR_REGISTRY}/${ECR_REPOSITORY}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
     - name: Build and Push Docker Image
+      env:
+        IMAGE_URI: ${{ steps.image.outputs.uri }}
       run: |
-        cd application
-        docker build -t 017820672128.dkr.ecr.us-east-1.amazonaws.com/new-comments:v1 .
-        docker push 017820672128.dkr.ecr.us-east-1.amazonaws.com/new-comments:v1
+        docker build --pull -t "${IMAGE_URI}" .
+        docker push "${IMAGE_URI}"
+      working-directory: application
 
   deploy:
     runs-on: ubuntu-latest
-    env:
-      AWS_REGION: us-east-1
-      
     needs: build-and-push
+    env:
+      IMAGE_URI: ${{ needs.build-and-push.outputs.image_uri }}
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v4.1.1
+      uses: actions/checkout@v4
 
-    - name: Set up AWS CLI
-      uses: aws-actions/configure-aws-credentials@v4.0.2
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -54,93 +73,78 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
       with:
-        terraform_version: 1.12.1
+        terraform_version: 1.13.3
 
-    - name: Run Terraform
+    - name: Terraform Init and Plan
       run: |
-        cd terraform-eks
-        terraform init
-        terraform apply -auto-approve
+        terraform -chdir=terraform-eks init
+        terraform -chdir=terraform-eks plan -lock-timeout=5m -out=tfplan
+
+    - name: Terraform Apply
+      run: terraform -chdir=terraform-eks apply -auto-approve tfplan
+
+    - name: Read Terraform Outputs
+      run: |
+        echo "CERTIFICATE_ARN=$(terraform -chdir=terraform-eks output -raw certificate_arn)" >> "$GITHUB_ENV"
 
     - name: Update Kubeconfig
       run: |
-        aws eks --region us-east-1 update-kubeconfig --name devops-cluster
+        aws eks --region "${AWS_REGION}" update-kubeconfig --name "${EKS_CLUSTER_NAME}"
         chmod 600 ~/.kube/config
 
-    - name: Install metrics server
+    - name: Install Metrics Server
       run: |
-        kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml --validate=false || true
+        kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.7.2/components.yaml
 
-    - name: Create namespace if not exists
+    - name: Deploy Application Manifests
       run: |
         kubectl create namespace app --dry-run=client -o yaml | kubectl apply -f -
+        sed "s|__IMAGE_URI__|${IMAGE_URI}|g" manifests/deployment.yaml | kubectl apply -f -
+        kubectl apply -f manifests/service.yaml
+        kubectl apply -f manifests/hpa.yaml
+        sed "s|__CERTIFICATE_ARN__|${CERTIFICATE_ARN}|g" manifests/ingress.yaml | kubectl apply -f -
 
-    - name: Deploy applications comments to EKS
+    - name: Wait for Application Rollout
       run: |
-        # Aplica os manifestos com --force para atualizar recursos existentes
-        kubectl apply -f manifests/deployment.yaml --force
-        kubectl apply -f manifests/service.yaml --force
-        kubectl apply -f manifests/hpa.yaml --force
-        kubectl apply -f manifests/ingress.yaml --force
+        kubectl rollout status deployment/api-new-comments -n app --timeout=180s
+
+    - name: Smoke Test Application
+      run: |
+        kubectl exec -n app deployment/api-new-comments -- python -c "import urllib.request; urllib.request.urlopen('http://svc-new-comments:8000/health', timeout=5)"
 
     - name: Install Helm
-      run: |
-        curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
-        chmod +x get_helm.sh
-        ./get_helm.sh
+      uses: azure/setup-helm@v4
 
-    - name: Add repo kube-prometheus and Update Helm Repository
+    - name: Deploy Prometheus and Grafana
+      env:
+        GRAFANA_ADMIN_PASSWORD: ${{ secrets.PASSWD_GRAFANA }}
       run: |
-        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
-        helm repo add grafana https://grafana.github.io/helm-charts || true
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
         helm repo update
-
-    - name: Deploy Helm Chart Prometheus and Grafana
-      run: |
-        # Verifica se o release já existe
-        if helm list -n monitoring | grep -q "prometheus"; then
-          echo "Updating existing Prometheus stack..."
-          helm upgrade prometheus prometheus-community/kube-prometheus-stack \
-            --namespace monitoring \
-            --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.storageClassName=gp2 \
-            --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=10Gi \
-            --set prometheus.prometheusSpec.resources.requests.cpu=500m \
-            --set prometheus.prometheusSpec.resources.requests.memory=1Gi \
-            --set prometheus.prometheusSpec.resources.limits.cpu=1000m \
-            --set prometheus.prometheusSpec.resources.limits.memory=2Gi \
-            --set grafana.persistence.enabled=true \
-            --set grafana.persistence.storageClassName=gp2 \
-            --set grafana.persistence.size=10Gi \
-            --set grafana.adminPassword=${{ secrets.PASSWD_GRAFANA }}
-        else
-          echo "Installing new Prometheus stack..."
-          helm install prometheus prometheus-community/kube-prometheus-stack \
-            --namespace monitoring --create-namespace \
-            --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.storageClassName=gp2 \
-            --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=10Gi \
-            --set prometheus.prometheusSpec.resources.requests.cpu=500m \
-            --set prometheus.prometheusSpec.resources.requests.memory=1Gi \
-            --set prometheus.prometheusSpec.resources.limits.cpu=1000m \
-            --set prometheus.prometheusSpec.resources.limits.memory=2Gi \
-            --set grafana.persistence.enabled=true \
-            --set grafana.persistence.storageClassName=gp2 \
-            --set grafana.persistence.size=10Gi \
-            --set grafana.adminPassword=${{ secrets.PASSWD_GRAFANA }}
-        fi
+        helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+          --namespace monitoring \
+          --create-namespace \
+          --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.storageClassName=gp2 \
+          --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=10Gi \
+          --set prometheus.prometheusSpec.resources.requests.cpu=500m \
+          --set prometheus.prometheusSpec.resources.requests.memory=1Gi \
+          --set prometheus.prometheusSpec.resources.limits.cpu=1000m \
+          --set prometheus.prometheusSpec.resources.limits.memory=2Gi \
+          --set grafana.persistence.enabled=true \
+          --set grafana.persistence.storageClassName=gp2 \
+          --set grafana.persistence.size=10Gi \
+          --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD}"
 
     - name: Deploy Grafana Dashboard
       run: |
-        kubectl apply -f manifests/grafana-dashboard.yaml --force
+        kubectl apply -f manifests/grafana-dashboard.yaml
 
-    - name: Deploy Prometheus/Grafana Ingress
+    - name: Deploy Monitoring Ingresses
       run: |
-        kubectl apply -f manifests/prometheus-ingress.yaml --force
+        sed "s|__CERTIFICATE_ARN__|${CERTIFICATE_ARN}|g" manifests/prometheus-ingress.yaml | kubectl apply -f -
+        sed "s|__CERTIFICATE_ARN__|${CERTIFICATE_ARN}|g" manifests/grafana-ingress.yaml | kubectl apply -f -
 
     - name: Deploy ServiceMonitor
       run: |
-        # Aguarda o CRD do ServiceMonitor estar disponível
-        kubectl wait --for=condition=established --timeout=60s crd/servicemonitors.monitoring.coreos.com || true
-        # Aguarda o Prometheus estar pronto
-        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s || true
-        kubectl apply -f manifests/servicemonitor.yaml --force
-
+        kubectl wait --for=condition=established crd/servicemonitors.monitoring.coreos.com --timeout=120s
+        kubectl apply -f manifests/servicemonitor.yaml

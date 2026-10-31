@@ -3,7 +3,6 @@ module "network" {
   region                  = local.region
   cidr_vpc                = local.cidr_vpc
   count_available_subnets = local.count_available_subnets
-  vpc                     = module.network.vpc
   tag_igw                 = local.tag_igw
   route_table_tag         = local.route_table_tag
   network_acl             = local.network_acl
@@ -78,8 +77,8 @@ module "externaldns" {
   cluster_oidc_provider_arn = module.cluster_eks.oidc_provider_arn
   cluster_oidc_issuer_url   = module.cluster_eks.oidc
   namespace                 = "externaldns"
-  aws_region                = "us-east-1"
-  domain                    = "dtechdevops.shop"
+  aws_region                = local.region
+  domain                    = local.domain
 
   depends_on = [
     module.cluster_eks

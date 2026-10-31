@@ -1,6 +1,7 @@
 # Local .terraform directories
 **/.terraform/*
 .terraform*
+!.terraform.lock.hcl
 
 #terraform inc files
 terraform.inc
@@ -31,7 +32,12 @@ override.tf.json
 
 # Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
 # example: *tfplan*
-tfplan% 
+tfplan
 # Pre-commit config
 .pre-commit-config.yaml
 pre-commit-config.yaml
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/

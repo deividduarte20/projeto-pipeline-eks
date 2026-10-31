@@ -2,11 +2,11 @@
 
 ## Otimização da API e Docker
 
-- **Endpoint de Health Check**: Adicionei um endpoint no path `/` para verificar a funcionalidade da API.
-- **Otimização do Docker**: 
-  - Imagem inicial: 950MB
-  - Após multi-stage build: 190MB
-  - Após push para AWS ECR: 84MB
+- **Endpoint de Health Check**: Adicionei um endpoint no path `/health` para verificar a funcionalidade da API.
+- **Otimização do Docker**:
+  - Dockerfile multi-stage com `python:3.12-slim`
+  - Execução como usuário não-root (UID 10001)
+  - Imagem final sem toolchain de build
 
 ## Documentação e Testes da API
 
@@ -65,8 +65,8 @@
    - Integrar com aplicação
 
 2. **DNS**
-   - Implementar external-dns
-   - Automação de registros DNS via Ingress
+   - ExternalDNS implementado no módulo `externaldns`
+   - Registros criados automaticamente a partir dos Ingresses
 
 3. **Resiliência**
    - Implementar Chaos Mesh para testes de stress
@@ -74,5 +74,7 @@
    - Configurar retry no deployment
 
 4. **Segurança**
-   - Implementar lock do state do Terraform
-   - Utilizar DynamoDB para proteção do state
+   - State lock configurado com `use_lockfile` no backend S3
+   - Imagens identificadas pelo SHA do commit
+   - Grafana com HTTPS e autenticação; Prometheus restrito a ALB interno
+   - Certificado ACM gerenciado pelo Terraform

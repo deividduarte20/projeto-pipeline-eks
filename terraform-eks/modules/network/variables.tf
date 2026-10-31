@@ -22,12 +22,6 @@ variable "private_subnet_tags" {
   description = "Tags adicionais"
 }
 
-variable "vpc" {
-  type        = string
-  description = "Id da VPC"
-}
-
-
 variable "tags_vpc" {
   description = "Tags para VPC"
   type        = map(string)

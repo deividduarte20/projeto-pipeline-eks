@@ -13,3 +13,8 @@ output "oidc" {
   description = "Url do OIDC do cluster EKS"
 }
 
+
+output "certificate_arn" {
+  value       = aws_acm_certificate_validation.public.certificate_arn
+  description = "ARN do certificado ACM usado pelos Ingresses"
+}

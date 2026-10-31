@@ -17,9 +17,18 @@ spec:
         prometheus.io/port: "8000"
         prometheus.io/path: "/metrics"
     spec:
+      terminationGracePeriodSeconds: 30
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: api-new-comments
-        image: 017820672128.dkr.ecr.us-east-1.amazonaws.com/new-comments:v1 
+        image: __IMAGE_URI__
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8000
           name: http
@@ -30,28 +39,35 @@ spec:
           limits:
             memory: "128Mi"
             cpu: "200m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 12
         livenessProbe:
           httpGet:
             path: /health
             port: http
-          initialDelaySeconds: 15
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
-          successThreshold: 1
         readinessProbe:
           httpGet:
             path: /health
             port: http
-          initialDelaySeconds: 15
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
-          successThreshold: 1
         env:
         - name: FLASK_APP
-          value: "api.py"
-        - name: FLASK_ENV
-          value: "production"
+          value: "main.py"
         - name: PYTHONUNBUFFERED
           value: "1"

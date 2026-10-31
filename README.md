@@ -53,9 +53,11 @@ A arquitetura do projeto inclui:
 ## Pipeline de Implantação
 
 ### 1. Build e Deploy
-* Build automatizado da imagem Docker
-* Push para o repositório ECR
-* Deploy da aplicação no namespace `app`
+* Build automatizado da imagem Docker (multi-stage, executada como usuário não-root)
+* Push para o ECR usando o SHA do commit como tag imutável
+* Deploy da imagem imutável no namespace `app`
+* `kubectl rollout status` e smoke test executados antes de concluir o deploy
+* Os placeholders `__IMAGE_URI__` e `__CERTIFICATE_ARN__` dos manifestos são substituídos pela pipeline
 
 ### 2. Infraestrutura
 * Provisionamento do cluster EKS
@@ -67,13 +69,17 @@ A arquitetura do projeto inclui:
 ### 3. Monitoramento
 * Instalação do metrics-server
 * Deploy do kube-prometheus via Helm
-* Configuração do Grafana
+* Grafana exposto por HTTPS e protegido pelo login administrativo
+* Prometheus exposto somente em ALB interno, com HTTPS
 * Setup de dashboards e alertas
+
+> O certificado ACM dos hosts `app`, `grafana` e `prometheus` é criado e validado via Route53 pelo Terraform.
+> O Prometheus não é acessível pela internet; use VPN, bastion ou `kubectl port-forward` no namespace `monitoring`.
 
 ## Aplicação
 
 ### Endpoints Disponíveis
-* **Health Check:** `/` - Verifica o status da aplicação
+* **Health Check:** `/health` - Verifica o status da aplicação
 * **Métricas:** `/metrics` - Endpoint Prometheus para coleta de métricas
 * **Documentação API:** `/apidocs` - Interface Swagger com documentação da API
 
@@ -97,6 +103,20 @@ Para contribuir com o projeto:
 2. Crie uma branch para sua feature
 3. Faça commit das suas alterações
 4. Envie um pull request
+
+## Testes da Aplicação
+
+```bash
+cd application
+python -m venv .venv
+. .venv/bin/activate
+pip install -r requirements-dev.txt
+pytest -q
+```
+
+## Destruição da Infraestrutura
+
+O script `destroy.sh` remove apenas recursos do projeto (`devops-cluster`, VPC `devops-vpc`, Load Balancers da VPC e Elastic IPs associados). Por padrão ele exige a confirmação digitando `destroy`; em automação, use `FORCE_DESTROY=1`.
 
 ## Suporte
 Para suporte ou dúvidas, abra uma issue no repositório do projeto.

@@ -1,7 +1,7 @@
 #Network Acl
 # Acl Public
 resource "aws_network_acl" "public" {
-  vpc_id     = var.vpc
+  vpc_id     = aws_vpc.vpc.id
   subnet_ids = aws_subnet.public.*.id
 
   dynamic "egress" {
@@ -36,7 +36,7 @@ resource "aws_network_acl" "public" {
 #Network Acl
 # Acl Private
 resource "aws_network_acl" "private" {
-  vpc_id     = var.vpc
+  vpc_id     = aws_vpc.vpc.id
   subnet_ids = aws_subnet.private.*.id
 
   dynamic "egress" {

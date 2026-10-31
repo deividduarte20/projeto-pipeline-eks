@@ -2,16 +2,12 @@ name: Terraform Destroy
 
 on:
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to destroy (e.g., dev, prod)'
-        required: false
-        default: 'dev'
 
 jobs:
   destroy:
     name: Terraform Destroy
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     env:
       AWS_REGION: us-east-1
       TF_WORKING_DIR: terraform-eks
@@ -30,7 +26,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.12.1
+          terraform_version: 1.13.3
 
       - name: Check EKS Cluster Existence
         id: check_cluster
@@ -69,7 +65,8 @@ jobs:
           kubectl wait --for=delete namespace/app --timeout=120s || true
 
           # Delete monitoring resources
-          kubectl delete -f manifests/service-monitor.yaml --ignore-not-found=true || true
+          kubectl delete -f manifests/servicemonitor.yaml --ignore-not-found=true || true
+          kubectl delete -f manifests/grafana-ingress.yaml --ignore-not-found=true || true
           kubectl delete -f manifests/grafana-dashboard.yaml --ignore-not-found=true || true
           kubectl delete -f manifests/prometheus-ingress.yaml --ignore-not-found=true || true
           helm uninstall prometheus -n monitoring --wait --timeout=120s --ignore-not-found=true || true
@@ -96,4 +93,7 @@ jobs:
       - name: Destroy Resources
         id: destroy
         working-directory: .
+        env:
+          FORCE_DESTROY: "1"
+          AWS_REGION: us-east-1
         run: ./destroy.sh

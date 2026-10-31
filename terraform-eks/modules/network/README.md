@@ -47,7 +47,6 @@ No modules.
 | <a name="input_subnet_indices_for_nat"></a> [subnet\_indices\_for\_nat](#input\_subnet\_indices\_for\_nat) | Quantidade a ser criado de acordo com a necessidade fornecendo o indice da quantidade de subnets | `list(number)` | n/a | yes |
 | <a name="input_tag_igw"></a> [tag\_igw](#input\_tag\_igw) | Tag Name do internet gateway | `string` | n/a | yes |
 | <a name="input_tags_vpc"></a> [tags\_vpc](#input\_tags\_vpc) | Tags para VPC | `map(string)` | n/a | yes |
-| <a name="input_vpc"></a> [vpc](#input\_vpc) | Id da VPC | `string` | n/a | yes |
 
 ## Outputs
 
@@ -112,7 +111,6 @@ No modules.
 | <a name="input_subnet_indices_for_nat"></a> [subnet\_indices\_for\_nat](#input\_subnet\_indices\_for\_nat) | Quantidade a ser criado de acordo com a necessidade fornecendo o indice da quantidade de subnets | `list(number)` | n/a | yes |
 | <a name="input_tag_igw"></a> [tag\_igw](#input\_tag\_igw) | Tag Name do internet gateway | `string` | n/a | yes |
 | <a name="input_tags_vpc"></a> [tags\_vpc](#input\_tags\_vpc) | Tags para VPC | `map(string)` | n/a | yes |
-| <a name="input_vpc"></a> [vpc](#input\_vpc) | Id da VPC | `string` | n/a | yes |
 
 ## Outputs
 

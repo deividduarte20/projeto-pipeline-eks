@@ -8,7 +8,8 @@ resource "helm_release" "karpenter" {
   repository_password = data.aws_ecrpublic_authorization_token.token.password
   chart               = "karpenter"
   version             = "0.37.0"
-  wait                = false
+  wait                = true
+  timeout             = 600
 
   set {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
@@ -23,16 +24,6 @@ resource "helm_release" "karpenter" {
   set {
     name  = "settings.clusterEndpoint"
     value = var.endpoint
-  }
-
-  set {
-    name  = "enable_pod_identity"
-    value = "true"
-  }
-
-  set {
-    name  = "create_pod_identity_association"
-    value = "true"
   }
 
   set {
@@ -59,7 +50,7 @@ resource "helm_release" "karpenter" {
 
   set {
     name  = "logLevel"
-    value = "debug"
+    value = "info"
   }
 
   set {
@@ -93,15 +84,15 @@ resource "helm_release" "karpenter" {
   }
 
   set {
-    name  = "tolerations[0].key"
+    name  = "tolerations[1].key"
     value = "node-role.kubernetes.io/master"
   }
   set {
-    name  = "tolerations[0].operator"
+    name  = "tolerations[1].operator"
     value = "Exists"
   }
   set {
-    name  = "tolerations[0].effect"
+    name  = "tolerations[1].effect"
     value = "NoSchedule"
   }
   set {
@@ -164,9 +155,6 @@ resource "kubectl_manifest" "karpenter_node_pool" {
             - key: "karpenter.k8s.aws/instance-hypervisor"
               operator: In
               values: ["nitro"]
-            - key: "karpenter.k8s.aws/instance-generation"
-              operator: Gt
-              values: ["5"]
             - key: "node.kubernetes.io/instance-type"
               operator: In
               values: ["t3.medium", "t3.large", "c5.large", "m5.large"]
@@ -177,13 +165,6 @@ resource "kubectl_manifest" "karpenter_node_pool" {
         consolidationPolicy: WhenEmpty
         consolidateAfter: 30s
       weight: 1
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/instance: prometheus
   YAML
 
   depends_on = [

@@ -34,8 +34,14 @@ EOF
 
 
 resource "aws_iam_policy" "this" {
-  name   = "KarpenterController"
-  policy = file("${path.module}/controller-trust-policy.json")
+  name = "KarpenterController"
+  policy = templatefile("${path.module}/controller-trust-policy.json", {
+    account_id             = data.aws_caller_identity.this.account_id
+    region                 = data.aws_region.this.name
+    cluster_name           = var.cluster_name
+    node_role_arn          = aws_iam_role.karpenterNodeRole.arn
+    interruption_queue_arn = aws_sqs_queue.interruption.arn
+  })
 }
 
 
